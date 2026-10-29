@@ -252,7 +252,7 @@
 </head>
 <body>
   <main class="container-fluid dashboard-shell px-3 px-lg-4 py-4 py-lg-5">
-    <header class="tv-hide d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <header class="d-flex flex-wrap justify-content-between align-items-center gap-3">
       <div class="d-flex align-items-center gap-3">
         <span class="brand-mark" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5a7.5 7.5 0 0 1-11.2 6.5L4 19l1.1-4.1A7.5 7.5 0 1 1 20 11.5Z"/><path d="m8.8 11.8 2 2 4.3-4.5"/></svg>
@@ -266,6 +266,8 @@
           <span class="connection-dot"></span>
           <span id="connection-label">Conectando</span>
         </div>
+        <button class="btn btn-outline-secondary btn-sm rounded-pill" id="sound-toggle" type="button" aria-pressed="false">Activar sonido</button>
+        <span class="visually-hidden" id="sound-status" aria-live="polite"></span>
         <a class="btn btn-success btn-sm rounded-pill tv-hide" id="display-link" href="/?tv=1">Pantalla TV</a>
       </div>
     </header>
@@ -364,6 +366,8 @@
       counts: { pending: 0, done: 0, today: 0 },
       query: '',
       highlightId: null,
+      audioContext: null,
+      soundEnabled: false,
     };
     const $ = (id) => document.getElementById(id);
     const tvMode = new URLSearchParams(location.search).get('tv') === '1';
@@ -371,6 +375,37 @@
     const timeFormat = new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium', timeStyle: 'short' });
     const relativeFormat = new Intl.RelativeTimeFormat('es', { numeric: 'auto' });
     let bannerTimer = 0;
+
+    function updateSoundControl() {
+      $('sound-toggle').textContent = state.soundEnabled ? 'Silenciar sonido' : 'Activar sonido';
+      $('sound-toggle').setAttribute('aria-pressed', String(state.soundEnabled));
+    }
+
+    async function playTaskSound() {
+      if (!state.soundEnabled || !state.audioContext) return;
+      try {
+        await state.audioContext.resume();
+        const now = state.audioContext.currentTime;
+        const oscillator = state.audioContext.createOscillator();
+        const volume = state.audioContext.createGain();
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(880, now);
+        oscillator.frequency.setValueAtTime(1174, now + 0.12);
+        volume.gain.setValueAtTime(0.0001, now);
+        volume.gain.exponentialRampToValueAtTime(0.18, now + 0.02);
+        volume.gain.setValueAtTime(0.18, now + 0.2);
+        volume.gain.exponentialRampToValueAtTime(0.0001, now + 0.34);
+        oscillator.connect(volume);
+        volume.connect(state.audioContext.destination);
+        oscillator.start(now);
+        oscillator.stop(now + 0.35);
+        $('sound-status').textContent = 'Aviso sonoro de nueva tarea.';
+      } catch {
+        state.soundEnabled = false;
+        updateSoundControl();
+        $('sound-status').textContent = 'No se pudo reproducir el sonido. Vuelve a activar el audio.';
+      }
+    }
 
     function showIncomingTask(task) {
       state.highlightId = task.id;
@@ -547,6 +582,30 @@
       render();
     });
     $('refresh').addEventListener('click', loadTasks);
+    $('sound-toggle').addEventListener('click', async () => {
+      if (state.soundEnabled) {
+        state.soundEnabled = false;
+        updateSoundControl();
+        $('sound-status').textContent = 'Aviso sonoro desactivado.';
+        return;
+      }
+      if (!window.AudioContext) {
+        $('sound-status').textContent = 'Este navegador no admite avisos sonoros.';
+        return;
+      }
+      try {
+        state.audioContext = new AudioContext();
+        await state.audioContext.resume();
+        state.soundEnabled = true;
+        updateSoundControl();
+        $('sound-status').textContent = 'Aviso sonoro activado.';
+        await playTaskSound();
+      } catch {
+        state.soundEnabled = false;
+        updateSoundControl();
+        $('sound-status').textContent = 'No se pudo activar el audio en este navegador.';
+      }
+    });
     setInterval(render, 60000);
     setInterval(loadTasks, 30000);
     document.addEventListener('visibilitychange', () => {
@@ -565,6 +624,7 @@
     };
     events.addEventListener('task:new', (event) => {
       try {
+        playTaskSound();
         showIncomingTask(JSON.parse(event.data));
       } catch {
         loadTasks();
