@@ -411,14 +411,8 @@ if (preg_match('#^/api/tasks/([1-9][0-9]*)$#', $path, $matches)) {
         http_response_code(405);
         exit;
     }
-    $user = requireDashboardUser($config);
     $taskId = (int) $matches[1];
     $find = $db->prepare('SELECT * FROM tasks WHERE id = ?');
-    $find->execute([$taskId]);
-    if (!$find->fetch()) {
-        jsonResponse(['error' => 'La tarea no existe'], 404);
-    }
-
     if ($method === 'PATCH') {
         try {
             $body = json_decode(file_get_contents('php://input'), true, 512, JSON_THROW_ON_ERROR);
@@ -429,14 +423,20 @@ if (preg_match('#^/api/tasks/([1-9][0-9]*)$#', $path, $matches)) {
             jsonResponse(['error' => 'Envía { "done": true } o { "done": false }'], 400);
         }
         if ($body['done']) {
+            $user = authenticatedDashboardUser($config) ?? 'Equipo';
             $update = $db->prepare('UPDATE tasks SET done = 1, done_at = ?, done_by = ? WHERE id = ?');
             $update->execute([(int) floor(microtime(true) * 1000), $user, $taskId]);
         } else {
+            $user = requireDashboardUser($config);
             $update = $db->prepare('UPDATE tasks SET done = 0, done_at = NULL, done_by = NULL WHERE id = ?');
             $update->execute([$taskId]);
         }
         $find->execute([$taskId]);
-        $task = normalizeTask($find->fetch());
+        $taskRow = $find->fetch();
+        if ($taskRow === false) {
+            jsonResponse(['error' => 'La tarea no existe'], 404);
+        }
+        $task = normalizeTask($taskRow);
         publishEvent($db, 'task:update', $task);
         if ($task['done'] && $config['notify_on_done']) {
             sendWhatsAppText(
@@ -448,6 +448,11 @@ if (preg_match('#^/api/tasks/([1-9][0-9]*)$#', $path, $matches)) {
         jsonResponse($task);
     }
     if ($method === 'DELETE') {
+        requireDashboardUser($config);
+        $find->execute([$taskId]);
+        if (!$find->fetch()) {
+            jsonResponse(['error' => 'La tarea no existe'], 404);
+        }
         $delete = $db->prepare('DELETE FROM tasks WHERE id = ?');
         $delete->execute([$taskId]);
         publishEvent($db, 'task:delete', ['id' => $taskId]);

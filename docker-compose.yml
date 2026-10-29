@@ -63,6 +63,18 @@ services:
       start_period: 15s
       retries: 3
 
+  phpmyadmin:
+    image: phpmyadmin:5.2.3-apache
+    restart: unless-stopped
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+    ports:
+      - "${MYSQLADMIN_HOST_BIND:-127.0.0.1}:${MYSQLADMIN_HOST_PORT:-8082}:80"
+    depends_on:
+      db:
+        condition: service_healthy
+
   db:
     image: mariadb:11.4
     restart: unless-stopped
@@ -71,9 +83,12 @@ services:
       MARIADB_USER: ${MYSQL_USER:-whatsapp_app}
       MARIADB_PASSWORD: ${MYSQL_PASSWORD:?Configura MYSQL_PASSWORD en .env}
       MARIADB_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Configura MYSQL_ROOT_PASSWORD en .env}
+      MYSQLADMIN_USER: ${MYSQLADMIN_USER:?Configura MYSQLADMIN_USER en .env}
+      MYSQLADMIN_PASSWORD: ${MYSQLADMIN_PASSWORD:?Configura MYSQLADMIN_PASSWORD en .env}
     volumes:
       - tareas-db:/var/lib/mysql
       - ./sql/init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+      - ./sql/init-phpmyadmin.sh:/docker-entrypoint-initdb.d/002-phpmyadmin-user.sh:ro
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 10s

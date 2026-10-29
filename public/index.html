@@ -285,7 +285,6 @@
         </span>
         <div>
           <div class="fw-bold">Tareas</div>
-          <div class="brand-caption small">Bandeja de WhatsApp</div>
         </div>
       </div>
       <div class="d-flex flex-wrap align-items-center justify-content-end gap-2">
@@ -293,15 +292,14 @@
           <span class="connection-dot"></span>
           <span id="connection-label">Conectando</span>
         </div>
-        <button class="btn btn-outline-success btn-sm rounded-pill admin-action tv-hide" id="admin-action" type="button">Acceso administrador</button>
+        <button class="btn btn-outline-success btn-sm rounded-pill admin-action tv-hide" id="admin-action" type="button">Administrar tareas hechas</button>
         <button class="btn btn-outline-secondary btn-sm rounded-pill admin-action tv-hide" id="logout-action" type="button" hidden>Cerrar sesión</button>
         <a class="btn btn-success btn-sm rounded-pill tv-hide" id="display-link" href="/?tv=1">Pantalla TV</a>
       </div>
     </header>
 
     <section class="tv-intro mt-5 mb-4">
-      <p class="text-success text-uppercase fw-bold small mb-2">Tu equipo, al día</p>
-      <h1 class="display-6 fw-bold mb-2">Hola, aquí están tus tareas.</h1>
+      <h1 class="display-6 fw-bold mb-2">Tareas</h1>
       <p class="text-muted-app mb-0 tv-hide">Cada mensaje recibido por WhatsApp aparece aquí como una tarea pendiente.</p>
     </section>
 
@@ -369,8 +367,8 @@
 
   <dialog class="admin-dialog" id="admin-dialog">
     <form class="p-4" id="admin-form">
-      <h2 class="h4 fw-bold mb-2">Acceso de administrador</h2>
-      <p class="small text-muted-app mb-4">La pantalla puede mostrar tareas sin iniciar sesión. Para marcarlas como hechas, introduce las credenciales de administrador.</p>
+      <h2 class="h4 fw-bold mb-2">Administrar tareas hechas</h2>
+      <p class="small text-muted-app mb-4">Cualquier miembro del equipo puede marcar tareas como resueltas. Inicia sesión como administrador solo para devolverlas a pendientes o eliminarlas.</p>
       <label class="form-label fw-semibold" for="admin-user">Usuario</label>
       <input class="form-control mb-3" id="admin-user" name="username" autocomplete="username" required>
       <label class="form-label fw-semibold" for="admin-password">Contraseña</label>
@@ -537,11 +535,17 @@
         item.classList.toggle('is-done', Boolean(task.done));
         item.classList.toggle('is-new', task.id === highlightId);
         const toggle = item.querySelector('.task-check');
-        toggle.hidden = tvMode || !state.canManage;
+        toggle.hidden = tvMode || (Boolean(task.done) && !state.canManage);
         toggle.setAttribute('aria-pressed', String(Boolean(task.done)));
         toggle.setAttribute('aria-label', task.done ? 'Volver a pendiente' : 'Marcar como hecha');
         toggle.title = task.done ? 'Volver a pendiente' : 'Marcar como hecha';
-        toggle.addEventListener('click', () => requestAdmin(() => updateTask(task, !task.done)));
+        toggle.addEventListener('click', () => {
+          if (task.done) {
+            requestAdmin(() => updateTask(task, false));
+          } else {
+            updateTask(task, true);
+          }
+        });
 
         const sender = item.querySelector('.task-sender');
         sender.textContent = task.from_name || `+${task.from_number}`;
