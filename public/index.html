@@ -197,23 +197,6 @@
       pointer-events: none;
     }
 
-    .admin-dialog {
-      width: min(440px, calc(100% - 2rem));
-      padding: 0;
-      border: 0;
-      border-radius: 1rem;
-      color: inherit;
-      box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 22%);
-    }
-
-    .admin-dialog::backdrop {
-      background: rgb(16 28 22 / 55%);
-    }
-
-    .dialog-error {
-      min-height: 1.25rem;
-    }
-
     .tv-hide[hidden] {
       display: none !important;
     }
@@ -292,15 +275,12 @@
           <span class="connection-dot"></span>
           <span id="connection-label">Conectando</span>
         </div>
-        <button class="btn btn-outline-success btn-sm rounded-pill admin-action tv-hide" id="admin-action" type="button">Administrar tareas hechas</button>
-        <button class="btn btn-outline-secondary btn-sm rounded-pill admin-action tv-hide" id="logout-action" type="button" hidden>Cerrar sesión</button>
         <a class="btn btn-success btn-sm rounded-pill tv-hide" id="display-link" href="/?tv=1">Pantalla TV</a>
       </div>
     </header>
 
     <section class="tv-intro mt-5 mb-4">
       <h1 class="display-6 fw-bold mb-2">Tareas</h1>
-      <p class="text-muted-app mb-0 tv-hide">Cada mensaje recibido por WhatsApp aparece aquí como una tarea pendiente.</p>
     </section>
 
     <section class="row row-cols-1 row-cols-sm-3 g-3 mb-4 tv-summary" aria-label="Resumen de tareas">
@@ -365,22 +345,6 @@
 
   <div class="alert alert-success new-task-banner position-fixed shadow d-none" id="new-task-banner" role="status" aria-live="polite"></div>
 
-  <dialog class="admin-dialog" id="admin-dialog">
-    <form class="p-4" id="admin-form">
-      <h2 class="h4 fw-bold mb-2">Administrar tareas hechas</h2>
-      <p class="small text-muted-app mb-4">Cualquier miembro del equipo puede marcar tareas como resueltas. Inicia sesión como administrador solo para devolverlas a pendientes o eliminarlas.</p>
-      <label class="form-label fw-semibold" for="admin-user">Usuario</label>
-      <input class="form-control mb-3" id="admin-user" name="username" autocomplete="username" required>
-      <label class="form-label fw-semibold" for="admin-password">Contraseña</label>
-      <input class="form-control" id="admin-password" name="password" type="password" autocomplete="current-password" required>
-      <div class="dialog-error text-danger small mt-2" id="dialog-error" role="alert"></div>
-      <div class="d-flex justify-content-end gap-2 mt-3">
-        <button class="btn btn-outline-secondary" id="dialog-cancel" type="button">Cancelar</button>
-        <button class="btn btn-success" type="submit">Iniciar sesión</button>
-      </div>
-    </form>
-  </dialog>
-
   <template id="task-template">
     <li class="task d-flex align-items-start gap-3 py-3">
       <button class="task-check btn btn-outline-success rounded-circle" type="button">
@@ -408,54 +372,14 @@
       tasks: [],
       counts: { pending: 0, done: 0, today: 0 },
       query: '',
-      canManage: false,
-      authToken: '',
       highlightId: null,
-      pendingAction: null,
     };
     const $ = (id) => document.getElementById(id);
     const tvMode = new URLSearchParams(location.search).get('tv') === '1';
     document.body.classList.toggle('tv', tvMode);
-    try { state.authToken = sessionStorage.getItem('task-dashboard-auth') || ''; } catch {}
     const timeFormat = new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium', timeStyle: 'short' });
     const relativeFormat = new Intl.RelativeTimeFormat('es', { numeric: 'auto' });
     let bannerTimer = 0;
-
-    function apiHeaders(headers = {}) {
-      const result = new Headers(headers);
-      if (state.authToken) result.set('Authorization', state.authToken);
-      return result;
-    }
-
-    async function refreshSession() {
-      const response = await fetch('/api/session', { headers: apiHeaders() });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const session = await response.json();
-      state.canManage = session.can_manage;
-      if (!state.canManage && state.authToken) {
-        state.authToken = '';
-        try { sessionStorage.removeItem('task-dashboard-auth'); } catch {}
-      }
-      $('admin-action').hidden = tvMode || state.canManage;
-      $('logout-action').hidden = tvMode || !state.canManage;
-      $('display-link').hidden = tvMode;
-      render();
-    }
-
-    function showAdminDialog(message = '') {
-      $('dialog-error').textContent = message;
-      $('admin-dialog').showModal();
-      $('admin-user').focus();
-    }
-
-    async function requestAdmin(action) {
-      if (state.canManage) {
-        await action();
-        return;
-      }
-      state.pendingAction = action;
-      showAdminDialog();
-    }
 
     function showIncomingTask(task) {
       state.highlightId = task.id;
@@ -535,16 +459,12 @@
         item.classList.toggle('is-done', Boolean(task.done));
         item.classList.toggle('is-new', task.id === highlightId);
         const toggle = item.querySelector('.task-check');
-        toggle.hidden = tvMode || (Boolean(task.done) && !state.canManage);
+        toggle.hidden = tvMode;
         toggle.setAttribute('aria-pressed', String(Boolean(task.done)));
         toggle.setAttribute('aria-label', task.done ? 'Volver a pendiente' : 'Marcar como hecha');
         toggle.title = task.done ? 'Volver a pendiente' : 'Marcar como hecha';
         toggle.addEventListener('click', () => {
-          if (task.done) {
-            requestAdmin(() => updateTask(task, false));
-          } else {
-            updateTask(task, true);
-          }
+          updateTask(task, !Boolean(task.done));
         });
 
         const sender = item.querySelector('.task-sender');
@@ -563,8 +483,8 @@
         badge.classList.toggle('text-bg-warning', !task.done);
         const note = item.querySelector('.task-note');
         const remove = item.querySelector('.delete');
-        remove.hidden = !task.done || tvMode || !state.canManage;
-        remove.addEventListener('click', () => requestAdmin(() => deleteTask(task)));
+        remove.hidden = !task.done || tvMode;
+        remove.addEventListener('click', () => deleteTask(task));
         if (task.done) {
           note.textContent = `Completada ${ago(task.done_at)}${task.done_by ? ` por ${task.done_by}` : ''}`;
         } else if (Date.now() - task.received_at > 86400000) {
@@ -584,7 +504,7 @@
 
     async function loadTasks() {
       try {
-        const response = await fetch(`/api/tasks?status=${encodeURIComponent(state.status)}`, { headers: apiHeaders() });
+        const response = await fetch(`/api/tasks?status=${encodeURIComponent(state.status)}`);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
         state.tasks = data.tasks;
@@ -600,16 +520,9 @@
       try {
         const response = await fetch(`/api/tasks/${task.id}`, {
           method: 'PATCH',
-          headers: apiHeaders({ 'Content-Type': 'application/json' }),
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ done }),
         });
-        if (response.status === 401) {
-          state.canManage = false;
-          render();
-          state.pendingAction = () => updateTask(task, done);
-          showAdminDialog('La sesión ha caducado. Inicia sesión para continuar.');
-          return;
-        }
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         await loadTasks();
       } catch {
@@ -620,14 +533,7 @@
     async function deleteTask(task) {
       if (!window.confirm(`¿Eliminar la tarea #${task.id}? Esta acción no se puede deshacer.`)) return;
       try {
-        const response = await fetch(`/api/tasks/${task.id}`, { method: 'DELETE', headers: apiHeaders() });
-        if (response.status === 401) {
-          state.canManage = false;
-          render();
-          state.pendingAction = () => deleteTask(task);
-          showAdminDialog('La sesión ha caducado. Inicia sesión para continuar.');
-          return;
-        }
+        const response = await fetch(`/api/tasks/${task.id}`, { method: 'DELETE' });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         await loadTasks();
       } catch {
@@ -650,48 +556,6 @@
       render();
     });
     $('refresh').addEventListener('click', loadTasks);
-    $('admin-action').addEventListener('click', () => showAdminDialog());
-    $('logout-action').addEventListener('click', () => {
-      state.authToken = '';
-      state.canManage = false;
-      try { sessionStorage.removeItem('task-dashboard-auth'); } catch {}
-      refreshSession();
-    });
-    $('dialog-cancel').addEventListener('click', () => {
-      state.pendingAction = null;
-      $('admin-dialog').close();
-    });
-    $('admin-form').addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const username = $('admin-user').value;
-      const password = $('admin-password').value;
-      const credentialBytes = new TextEncoder().encode(`${username}:${password}`);
-      let credentialBinary = '';
-      credentialBytes.forEach((byte) => { credentialBinary += String.fromCharCode(byte); });
-      state.authToken = `Basic ${btoa(credentialBinary)}`;
-      try {
-        const response = await fetch('/api/session', { headers: apiHeaders() });
-        const session = response.ok ? await response.json() : { can_manage: false };
-        if (!session.can_manage) {
-          state.authToken = '';
-          $('dialog-error').textContent = 'Usuario o contraseña incorrectos.';
-          return;
-        }
-        try { sessionStorage.setItem('task-dashboard-auth', state.authToken); } catch {}
-        state.canManage = true;
-        $('admin-form').reset();
-        $('admin-dialog').close();
-        $('admin-action').hidden = true;
-        $('logout-action').hidden = tvMode;
-        render();
-        const pendingAction = state.pendingAction;
-        state.pendingAction = null;
-        if (pendingAction) await pendingAction();
-      } catch {
-        state.authToken = '';
-        $('dialog-error').textContent = 'No se pudo validar el acceso. Comprueba la conexión e inténtalo otra vez.';
-      }
-    });
     setInterval(render, 60000);
     setInterval(loadTasks, 30000);
     document.addEventListener('visibilitychange', () => {
@@ -718,7 +582,6 @@
     events.addEventListener('task:update', loadTasks);
     events.addEventListener('task:delete', loadTasks);
 
-    refreshSession().catch(() => showError('No se pudo comprobar el acceso de administrador.'));
     loadTasks();
   </script>
 </body>

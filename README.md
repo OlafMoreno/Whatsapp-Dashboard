@@ -12,7 +12,6 @@ Aplicación para que los mensajes entrantes de WhatsApp Cloud API se guarden com
    ```
 
 3. Abre `.env` con el Bloc de notas y cambia estas claves por contraseñas propias:
-   - `DASHBOARD_PASSWORD`: protege la aplicación.
    - `MYSQL_PASSWORD` y `MYSQL_ROOT_PASSWORD`: protegen MariaDB.
    - `MYSQLADMIN_USER` y `MYSQLADMIN_PASSWORD`: credenciales de solo lectura para phpMyAdmin.
    - `WHATSAPP_VERIFY_TOKEN`: secreto que también se copia en la configuración del webhook de Meta.
@@ -24,9 +23,9 @@ Aplicación para que los mensajes entrantes de WhatsApp Cloud API se guarden com
    docker compose up -d --build
    ```
 
-5. Abre `http://localhost:8080` (o el puerto que hayas puesto en `HOST_PORT`). En el dashboard normal el equipo puede marcar tareas como resueltas sin iniciar sesión. Las credenciales de administrador solo se necesitan para devolver tareas a pendientes o eliminarlas.
+5. Abre `http://localhost:8080` (o el puerto que hayas puesto en `HOST_PORT`). El equipo puede marcar tareas como resueltas, devolverlas a pendientes o eliminarlas sin iniciar sesión.
 
-El puerto del dashboard se publica en la red local para que el televisor y el equipo vean las tareas automáticamente. Abre `http://IP-DEL-ORDENADOR:8080/?tv=1` (sustituye `8080` por `HOST_PORT`) en el televisor para mostrar las tareas pendientes en una vista grande; el modo TV no muestra controles para cambiar las tareas. Los mensajes nuevos aparecen resaltados y vuelven a poner la lista al principio. El puerto de MariaDB no se publica; solo lo usan los servicios dentro de Docker. **Cualquier usuario con acceso al puerto del dashboard puede marcar una tarea como resuelta.** Limita ese puerto a la red local mediante el firewall y no lo redirijas al Internet público: los mensajes y teléfonos se pueden ver sin contraseña en esa red.
+El puerto del dashboard se publica en la red local para que el televisor y el equipo vean las tareas automáticamente. Abre `http://IP-DEL-ORDENADOR:8080/?tv=1` (sustituye `8080` por `HOST_PORT`) en el televisor para mostrar las tareas pendientes en una vista grande; el modo TV no muestra controles para cambiar las tareas. Los mensajes nuevos aparecen resaltados y vuelven a poner la lista al principio. El puerto de MariaDB no se publica; solo lo usan los servicios dentro de Docker. **Cualquier usuario con acceso al dashboard puede marcar tareas, devolverlas a pendientes o eliminarlas.** Limita ese puerto a la red local mediante el firewall y no lo redirijas al Internet público: los mensajes y teléfonos se pueden ver sin contraseña en esa red.
 
 El dashboard y el webhook son servicios separados: el primero escucha en `HOST_BIND:HOST_PORT` y el segundo en `WEBHOOK_HOST_BIND:WEBHOOK_HOST_PORT` (por defecto `127.0.0.1:8081`). phpMyAdmin tiene otro puerto configurable (`MYSQLADMIN_HOST_BIND` y `MYSQLADMIN_HOST_PORT`), por defecto `127.0.0.1:8082`. Mantén phpMyAdmin accesible solo desde este ordenador; no publiques su puerto en la red local ni en Internet.
 
@@ -75,11 +74,11 @@ Si la aplicación de Meta está en modo desarrollo, solo recibirá mensajes de s
 - Filtros para ver las pendientes, las hechas o todas; búsqueda por contenido, nombre y teléfono.
 - Actualizaciones en directo cuando otro miembro del equipo recibe, completa o elimina una tarea.
 - Vista pública de solo lectura para el televisor: mensajes y cambios aparecen sin iniciar sesión ni pedir intervención al administrador; la página se actualiza automáticamente si se interrumpe la conexión.
-- El equipo puede resolver tareas desde la vista normal sin iniciar sesión; los permisos de administrador solo se requieren para reabrir o borrar tareas completadas.
+- El equipo puede completar, reabrir y borrar tareas desde la vista normal sin iniciar sesión.
 - Servicio y puerto separados para el webhook de WhatsApp, con acceso limitado a la ruta `/webhook`.
 - Modo pantalla grande mediante `/?tv=1`, con nuevos mensajes destacados al llegar.
 - Marcar tareas como resueltas y registrar cuándo; el sistema muestra **Equipo** como responsable si no se inicia sesión.
-- Acciones administrativas protegidas aparte; usa **Administrar tareas hechas** para reabrir o eliminar tareas.
+- Usa **Administrar tareas hechas** para consultar, reabrir o eliminar tareas completadas sin iniciar sesión.
 - Evita duplicados cuando Meta reenvía un mensaje.
 - Guarda mensajes de texto, imágenes, vídeos, documentos, audio, ubicaciones y respuestas interactivas.
 - Comprueba la firma `X-Hub-Signature-256` cuando se configura `WHATSAPP_APP_SECRET`.

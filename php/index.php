@@ -14,8 +14,6 @@ $config = [
     'graph_api_version' => getenv('GRAPH_API_VERSION') ?: 'v26.0',
     'reply_on_receive' => getenv('REPLY_ON_RECEIVE') === 'true',
     'notify_on_done' => getenv('NOTIFY_ON_DONE') === 'true',
-    'dashboard_user' => getenv('DASHBOARD_USER') ?: '',
-    'dashboard_password' => getenv('DASHBOARD_PASSWORD') ?: '',
     'app_mode' => getenv('APP_MODE') ?: 'dashboard',
     'dev_live_reload' => getenv('DEV_LIVE_RELOAD') === 'true',
 ];
@@ -224,39 +222,6 @@ function validWebhookSignature(string $body, string $appSecret): bool
         && hash_equals('sha256=' . hash_hmac('sha256', $body, $appSecret), strtolower($signature));
 }
 
-function authenticatedDashboardUser(array $config): ?string
-{
-    if ($config['dashboard_user'] === '' || $config['dashboard_password'] === '') {
-        return null;
-    }
-    $user = $_SERVER['PHP_AUTH_USER'] ?? null;
-    $password = $_SERVER['PHP_AUTH_PW'] ?? null;
-    if ($user === null && preg_match('/^Basic\s+(.+)$/i', $_SERVER['HTTP_AUTHORIZATION'] ?? '', $matches)) {
-        $decoded = base64_decode($matches[1], true);
-        if ($decoded !== false && str_contains($decoded, ':')) {
-            [$user, $password] = explode(':', $decoded, 2);
-        }
-    }
-    if ($user !== null && $password !== null
-        && hash_equals($config['dashboard_user'], $user)
-        && hash_equals($config['dashboard_password'], $password)) {
-        return $user;
-    }
-    return null;
-}
-
-function requireDashboardUser(array $config): string
-{
-    $user = authenticatedDashboardUser($config);
-    if ($user !== null) {
-        return $user;
-    }
-    header('WWW-Authenticate: Basic realm="Tareas", charset="UTF-8"');
-    http_response_code(401);
-    echo 'Acceso restringido';
-    exit;
-}
-
 function webhook(PDO $db, array $config, string $method): never
 {
     if ($method === 'GET') {
@@ -373,10 +338,6 @@ if ($path === '/' || $path === '/index.php') {
     exit;
 }
 
-if ($path === '/api/session' && $method === 'GET') {
-    jsonResponse(['can_manage' => authenticatedDashboardUser($config) !== null]);
-}
-
 if ($path === '/api/tasks' && $method === 'GET') {
     $status = $_GET['status'] ?? 'pending';
     $where = match ($status) {
@@ -423,11 +384,9 @@ if (preg_match('#^/api/tasks/([1-9][0-9]*)$#', $path, $matches)) {
             jsonResponse(['error' => 'Envía { "done": true } o { "done": false }'], 400);
         }
         if ($body['done']) {
-            $user = authenticatedDashboardUser($config) ?? 'Equipo';
             $update = $db->prepare('UPDATE tasks SET done = 1, done_at = ?, done_by = ? WHERE id = ?');
-            $update->execute([(int) floor(microtime(true) * 1000), $user, $taskId]);
+            $update->execute([(int) floor(microtime(true) * 1000), 'Equipo', $taskId]);
         } else {
-            $user = requireDashboardUser($config);
             $update = $db->prepare('UPDATE tasks SET done = 0, done_at = NULL, done_by = NULL WHERE id = ?');
             $update->execute([$taskId]);
         }
@@ -448,7 +407,6 @@ if (preg_match('#^/api/tasks/([1-9][0-9]*)$#', $path, $matches)) {
         jsonResponse($task);
     }
     if ($method === 'DELETE') {
-        requireDashboardUser($config);
         $find->execute([$taskId]);
         if (!$find->fetch()) {
             jsonResponse(['error' => 'La tarea no existe'], 404);
