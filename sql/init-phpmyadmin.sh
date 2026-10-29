@@ -23,8 +23,8 @@ case "$MARIADB_DATABASE" in
 esac
 
 mariadb --protocol=socket --user=root --password="$MARIADB_ROOT_PASSWORD" --execute="
-CREATE USER '$MYSQLADMIN_USER'@'%' IDENTIFIED BY '$MYSQLADMIN_PASSWORD';
-GRANT SELECT, SHOW VIEW ON \`$MARIADB_DATABASE\`.* TO '$MYSQLADMIN_USER'@'%';
+CREATE USER IF NOT EXISTS '$MYSQLADMIN_USER'@'%' IDENTIFIED BY '$MYSQLADMIN_PASSWORD';
+GRANT ALL PRIVILEGES ON \`$MARIADB_DATABASE\`.* TO '$MYSQLADMIN_USER'@'%';
 "
 
-echo "Usuario de solo lectura para phpMyAdmin configurado en MariaDB."
+echo "Usuario administrador de la base de tareas para phpMyAdmin configurado en MariaDB."

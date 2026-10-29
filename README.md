@@ -13,7 +13,7 @@ Aplicación para que los mensajes entrantes de WhatsApp Cloud API se guarden com
 
 3. Abre `.env` con el Bloc de notas y cambia estas claves por contraseñas propias:
    - `MYSQL_PASSWORD` y `MYSQL_ROOT_PASSWORD`: protegen MariaDB.
-   - `MYSQLADMIN_USER` y `MYSQLADMIN_PASSWORD`: credenciales de solo lectura para phpMyAdmin.
+   - `MYSQLADMIN_USER` y `MYSQLADMIN_PASSWORD`: credenciales administradoras de la base de tareas en phpMyAdmin.
    - `WHATSAPP_VERIFY_TOKEN`: secreto que también se copia en la configuración del webhook de Meta.
 
    Usa letras y números en las contraseñas para evitar tener que escapar caracteres especiales en el archivo `.env`.
@@ -29,7 +29,7 @@ El puerto del dashboard se publica en la red local para que el televisor y el eq
 
 El dashboard y el webhook son servicios separados: el primero escucha en `HOST_BIND:HOST_PORT` y el segundo en `WEBHOOK_HOST_BIND:WEBHOOK_HOST_PORT` (por defecto `127.0.0.1:8081`). phpMyAdmin tiene otro puerto configurable (`MYSQLADMIN_HOST_BIND` y `MYSQLADMIN_HOST_PORT`), por defecto `127.0.0.1:8082`. Mantén phpMyAdmin accesible solo desde este ordenador; no publiques su puerto en la red local ni en Internet.
 
-Abre `http://localhost:8082` para entrar en phpMyAdmin (si cambiaste `MYSQLADMIN_HOST_PORT`, usa ese puerto). Inicia sesión con `MYSQLADMIN_USER` y `MYSQLADMIN_PASSWORD`, configurados en `.env`; esa cuenta solo puede leer la base de datos de tareas. MariaDB crea la cuenta directamente durante su inicialización; no hay un contenedor auxiliar. Para administración completa, utiliza `root` y `MYSQL_ROOT_PASSWORD` solo cuando sea necesario. Si cambias el usuario o la contraseña después de haber inicializado la base de datos, actualiza la cuenta dentro de MariaDB; los scripts de inicialización no se vuelven a ejecutar sobre un volumen existente. phpMyAdmin no expone el puerto de MariaDB ni guarda credenciales de inicio de sesión.
+Abre `http://localhost:8082` para entrar en phpMyAdmin (si cambiaste `MYSQLADMIN_HOST_PORT`, usa ese puerto). Inicia sesión con `MYSQLADMIN_USER` y `MYSQLADMIN_PASSWORD`, configurados en `.env`; esa cuenta puede crear, modificar y borrar tablas y datos dentro de la base de tareas. No tiene permisos sobre otras bases ni puede administrar las cuentas del servidor. MariaDB crea la cuenta directamente durante su inicialización; no hay un contenedor auxiliar. Si cambias el usuario o la contraseña después de haber inicializado la base de datos, actualiza la cuenta dentro de MariaDB; los scripts de inicialización no se vuelven a ejecutar sobre un volumen existente. phpMyAdmin no expone el puerto de MariaDB ni guarda credenciales de inicio de sesión.
 
 Comandos útiles:
 
@@ -41,7 +41,7 @@ docker compose up -d --build
 docker compose exec -T db sh -c 'mariadb-dump -u root -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE"' > .\copia.sql
 ```
 
-Los datos persisten en el volumen Docker `tareas-db`. MariaDB ejecuta [`sql/init.sql`](./sql/init.sql) y [`sql/init-phpmyadmin.sh`](./sql/init-phpmyadmin.sh) al crear la base de datos por primera vez. Para hacer una copia de seguridad consistente, usa `mariadb-dump` desde el contenedor de MariaDB antes de copiar o cambiar archivos de la base de datos.
+Los datos persisten en el volumen Docker `tareas-db`. Las fechas de recepción y finalización se guardan como `DATETIME(3)` en UTC; el timestamp Unix que llega en el webhook se convierte al guardarlo y la API sigue enviando milisegundos Unix al dashboard. MariaDB ejecuta [`sql/init.sql`](./sql/init.sql) y [`sql/init-phpmyadmin.sh`](./sql/init-phpmyadmin.sh) al crear la base de datos por primera vez. Para las bases existentes, [`sql/migrate-task-datetimes.sql`](./sql/migrate-task-datetimes.sql) convierte las fechas de recepción y finalización de milisegundos Unix a `DATETIME(3)` UTC; haz una copia de seguridad antes de ejecutarla. Para hacer una copia de seguridad consistente, usa `mariadb-dump` desde el contenedor de MariaDB antes de copiar o cambiar archivos de la base de datos.
 
 ## Cambios en directo
 

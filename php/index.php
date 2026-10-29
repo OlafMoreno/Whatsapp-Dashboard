@@ -110,13 +110,24 @@ try {
 
 function normalizeTask(array $task): array
 {
-    foreach (['id', 'received_at', 'done'] as $field) {
+    foreach (['id', 'done'] as $field) {
         $task[$field] = (int) $task[$field];
     }
-    if ($task['done_at'] !== null) {
-        $task['done_at'] = (int) $task['done_at'];
+    foreach (['received_at', 'done_at'] as $field) {
+        if ($task[$field] !== null) {
+            $date = new DateTimeImmutable($task[$field], new DateTimeZone('UTC'));
+            $task[$field] = (int) $date->format('U') * 1000 + (int) $date->format('v');
+        }
     }
     return $task;
+}
+
+function databaseDateFromMilliseconds(int $milliseconds): string
+{
+    $seconds = intdiv($milliseconds, 1000);
+    $millisecondPart = $milliseconds % 1000;
+    $date = (new DateTimeImmutable('@' . $seconds))->setTimezone(new DateTimeZone('UTC'));
+    return $date->format('Y-m-d H:i:s') . sprintf('.%03d', $millisecondPart);
 }
 
 function publishEvent(PDO $db, string $name, array $data): void
@@ -286,9 +297,11 @@ function webhook(PDO $db, array $config, string $method): never
                         $fromName,
                         (string) $message['type'],
                         messageBody($message),
-                        $timestamp !== false && $timestamp > 0
-                            ? $timestamp * 1000
-                            : (int) floor(microtime(true) * 1000),
+                        databaseDateFromMilliseconds(
+                            $timestamp !== false && $timestamp > 0
+                                ? $timestamp * 1000
+                                : (int) floor(microtime(true) * 1000)
+                        ),
                     ]);
                     if ($insert->rowCount() === 0) {
                         continue;
@@ -353,7 +366,7 @@ if ($path === '/api/tasks' && $method === 'GET') {
         'SELECT
             COALESCE(SUM(done = 0), 0) AS pending,
             COALESCE(SUM(done = 1), 0) AS done,
-            COALESCE(SUM(received_at >= ' . ((int) floor(strtotime('today') * 1000)) . '), 0) AS today
+            COALESCE(SUM(received_at >= ' . $db->quote(gmdate('Y-m-d 00:00:00')) . '), 0) AS today
          FROM tasks'
     )->fetch();
     jsonResponse([
@@ -385,7 +398,11 @@ if (preg_match('#^/api/tasks/([1-9][0-9]*)$#', $path, $matches)) {
         }
         if ($body['done']) {
             $update = $db->prepare('UPDATE tasks SET done = 1, done_at = ?, done_by = ? WHERE id = ?');
-            $update->execute([(int) floor(microtime(true) * 1000), 'Equipo', $taskId]);
+            $update->execute([
+                databaseDateFromMilliseconds((int) floor(microtime(true) * 1000)),
+                'Equipo',
+                $taskId,
+            ]);
         } else {
             $update = $db->prepare('UPDATE tasks SET done = 0, done_at = NULL, done_by = NULL WHERE id = ?');
             $update->execute([$taskId]);
