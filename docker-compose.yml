@@ -1,0 +1,52 @@
+services:
+  web:
+    build: .
+    image: whatsapp-tareas:latest
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-whatsapp_tasks}
+      MYSQL_USER: ${MYSQL_USER:-whatsapp_app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Configura MYSQL_PASSWORD en .env}
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:?Configura WHATSAPP_VERIFY_TOKEN en .env}
+      WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:-}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      GRAPH_API_VERSION: ${GRAPH_API_VERSION:-v26.0}
+      REPLY_ON_RECEIVE: ${REPLY_ON_RECEIVE:-false}
+      NOTIFY_ON_DONE: ${NOTIFY_ON_DONE:-false}
+      DASHBOARD_USER: ${DASHBOARD_USER:?Configura DASHBOARD_USER en .env}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:?Configura DASHBOARD_PASSWORD en .env}
+    ports:
+      - "${HOST_BIND:-0.0.0.0}:${HOST_PORT:-8080}:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "php -r \"exit(@file_get_contents('http://127.0.0.1/health') === false ? 1 : 0);\""]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  db:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${MYSQL_DATABASE:-whatsapp_tasks}
+      MARIADB_USER: ${MYSQL_USER:-whatsapp_app}
+      MARIADB_PASSWORD: ${MYSQL_PASSWORD:?Configura MYSQL_PASSWORD en .env}
+      MARIADB_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Configura MYSQL_ROOT_PASSWORD en .env}
+    volumes:
+      - tareas-db:/var/lib/mysql
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 10
+
+volumes:
+  tareas-db:

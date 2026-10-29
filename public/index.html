@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f2f5f2">
+  <title>Mis tareas · WhatsApp</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #f2f5f2;
+      --surface: #fff;
+      --ink: #16231e;
+      --muted: #718078;
+      --line: #e4eae5;
+      --green: #15734c;
+      --green-dark: #10583b;
+      --green-soft: #e6f4eb;
+      --amber: #92610d;
+      --amber-soft: #fff4d9;
+      --red: #a13838;
+      --focus: #248a5b;
+      --shadow: 0 12px 40px rgb(22 43 31 / 6%);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse at 85% 0, rgb(220 238 223 / 70%), transparent 35rem),
+        var(--page);
+      color: var(--ink);
+      font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, input:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 3px;
+    }
+    .shell { width: min(1050px, 100% - 40px); margin: 0 auto; padding: 38px 0 72px; }
+    .topline { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-mark {
+      display: grid; width: 43px; height: 43px; place-items: center; border-radius: 15px;
+      color: white; background: var(--green); box-shadow: 0 7px 18px rgb(21 115 76 / 20%);
+    }
+    .brand-mark svg { width: 23px; height: 23px; }
+    .brand-name { font-weight: 750; letter-spacing: -.03em; }
+    .brand-caption { color: var(--muted); font-size: 12px; }
+    .connection {
+      display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px;
+      border: 1px solid var(--line); border-radius: 999px; background: rgb(255 255 255 / 76%);
+      color: var(--muted); font-size: 12px; font-weight: 600;
+    }
+    .connection-dot { width: 8px; height: 8px; border-radius: 50%; background: #d29b36; }
+    .connection.on .connection-dot { background: #2b9b66; box-shadow: 0 0 0 3px #e6f4eb; }
+    .intro { margin: 50px 0 25px; }
+    .eyebrow {
+      margin: 0 0 8px; color: var(--green); font-size: 11px; font-weight: 800;
+      letter-spacing: .13em; text-transform: uppercase;
+    }
+    h1 { margin: 0; font-size: clamp(32px, 5vw, 46px); line-height: 1.1; letter-spacing: -.055em; }
+    .intro-copy { margin: 10px 0 0; color: var(--muted); font-size: 15px; }
+    .summary { display: grid; grid-template-columns: 1.25fr 1fr 1fr; gap: 14px; margin: 29px 0 32px; }
+    .stat {
+      min-height: 126px; padding: 20px; border: 1px solid var(--line);
+      border-radius: 18px; background: var(--surface); box-shadow: var(--shadow);
+    }
+    .stat.primary { color: white; border-color: transparent; background: var(--green); }
+    .stat-label { display: block; color: var(--muted); font-size: 12px; font-weight: 650; }
+    .primary .stat-label { color: rgb(255 255 255 / 76%); }
+    .stat-value { display: block; margin-top: 9px; font-size: 37px; font-weight: 770; letter-spacing: -.06em; line-height: 1; }
+    .stat-foot { display: block; margin-top: 9px; font-size: 12px; color: var(--muted); }
+    .primary .stat-foot { color: rgb(255 255 255 / 76%); }
+    .panel {
+      overflow: hidden; border: 1px solid var(--line); border-radius: 20px;
+      background: var(--surface); box-shadow: var(--shadow);
+    }
+    .panel-head { padding: 23px 24px 18px; }
+    .panel-title-row { display: flex; justify-content: space-between; align-items: center; gap: 14px; }
+    h2 { margin: 0; font-size: 19px; letter-spacing: -.035em; }
+    .result-count { color: var(--muted); font-size: 12px; }
+    .controls { display: flex; align-items: center; gap: 11px; margin-top: 18px; }
+    .filters {
+      display: inline-flex; flex: 0 0 auto; gap: 3px; padding: 4px;
+      border: 1px solid var(--line); border-radius: 12px; background: #f7f9f7;
+    }
+    .filter {
+      min-height: 36px; padding: 7px 12px; border: 0; border-radius: 9px;
+      background: transparent; color: var(--muted); font-size: 12px; font-weight: 650; cursor: pointer;
+    }
+    .filter[aria-pressed="true"] { background: var(--surface); color: var(--green-dark); box-shadow: 0 1px 5px rgb(20 40 28 / 10%); }
+    .search-wrap { position: relative; flex: 1; min-width: 120px; }
+    .search-wrap svg { position: absolute; top: 50%; left: 13px; width: 17px; height: 17px; color: #85928a; transform: translateY(-50%); pointer-events: none; }
+    .search {
+      width: 100%; height: 44px; padding: 0 13px 0 39px; border: 1px solid var(--line);
+      border-radius: 12px; background: white; color: var(--ink); font-size: 13px;
+    }
+    .refresh {
+      display: grid; flex: 0 0 44px; width: 44px; height: 44px; place-items: center;
+      border: 1px solid var(--line); border-radius: 12px; background: white; cursor: pointer;
+    }
+    .refresh:hover { background: #f6f9f6; }
+    .refresh svg { width: 17px; height: 17px; }
+    .alert { display: none; margin: 0 24px 15px; padding: 12px 14px; border-radius: 11px; background: #fff0ef; color: var(--red); font-size: 13px; }
+    .alert.show { display: block; }
+    .task-list { list-style: none; margin: 0; padding: 0 24px; }
+    .task {
+      display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; gap: 15px;
+      align-items: start; padding: 20px 0; border-top: 1px solid var(--line);
+      animation: enter .2s ease-out;
+    }
+    @keyframes enter { from { opacity: .4; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+    .task-check {
+      display: grid; width: 37px; height: 37px; place-items: center; margin-top: 2px;
+      border: 1.5px solid #cbd6ce; border-radius: 12px; background: white; color: white; cursor: pointer;
+      transition: background .15s, border-color .15s, transform .15s;
+    }
+    .task-check:hover { transform: scale(1.05); border-color: var(--green); }
+    .task-check svg { width: 19px; height: 19px; opacity: 0; }
+    .task-check[aria-pressed="true"] { border-color: var(--green); background: var(--green); }
+    .task-check[aria-pressed="true"] svg { opacity: 1; }
+    .task-main { min-width: 0; }
+    .task-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 7px 10px; color: var(--muted); font-size: 12px; }
+    .task-sender { color: var(--ink); font-size: 13px; font-weight: 700; }
+    .task-id { color: #8c9890; }
+    .task-body { margin: 7px 0 0; overflow-wrap: anywhere; white-space: pre-wrap; font-size: 15px; line-height: 1.55; }
+    .task-body a { color: var(--green-dark); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+    .task-note { margin: 8px 0 0; color: var(--green); font-size: 12px; }
+    .task-actions { display: flex; align-items: center; gap: 8px; }
+    .badge { padding: 5px 9px; border-radius: 999px; background: var(--amber-soft); color: var(--amber); font-size: 11px; font-weight: 700; }
+    .badge.done { background: var(--green-soft); color: var(--green-dark); }
+    .delete {
+      padding: 6px 9px; border: 1px solid var(--line); border-radius: 9px;
+      background: white; color: var(--muted); font-size: 11px; cursor: pointer;
+    }
+    .delete[hidden] { display: none; }
+    .delete:hover { border-color: #e3b9b5; color: var(--red); }
+    .task.is-done .task-body { color: var(--muted); }
+    .empty { padding: 63px 20px; border-top: 1px solid var(--line); text-align: center; }
+    .empty-icon { display: grid; width: 54px; height: 54px; place-items: center; margin: 0 auto 15px; border-radius: 18px; background: var(--green-soft); color: var(--green); }
+    .empty-icon svg { width: 25px; height: 25px; }
+    .empty-title { margin: 0; font-weight: 720; font-size: 16px; }
+    .empty-copy { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
+    .footer { margin-top: 17px; color: #8a968e; font-size: 11px; text-align: center; }
+    @media (max-width: 680px) {
+      .shell { width: min(100% - 28px, 560px); padding: 22px 0 48px; }
+      .intro { margin-top: 39px; }
+      .summary { gap: 9px; margin: 23px 0; }
+      .stat { min-height: 106px; padding: 15px 13px; border-radius: 15px; }
+      .stat-value { font-size: 31px; }
+      .stat-foot { font-size: 10px; }
+      .panel-head { padding: 19px 16px 14px; }
+      .controls { flex-wrap: wrap; }
+      .filters { width: 100%; }
+      .filter { flex: 1; }
+      .search-wrap { flex: 1; }
+      .task-list { padding: 0 16px; }
+      .task { grid-template-columns: 38px minmax(0, 1fr); gap: 10px; padding: 17px 0; }
+      .task-check { width: 34px; height: 34px; }
+      .task-actions { grid-column: 2; }
+      .alert { margin-right: 16px; margin-left: 16px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="topline">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5a7.5 7.5 0 0 1-11.2 6.5L4 19l1.1-4.1A7.5 7.5 0 1 1 20 11.5Z"/><path d="m8.8 11.8 2 2 4.3-4.5"/></svg>
+        </span>
+        <span><span class="brand-name">Tareas</span><br><span class="brand-caption">Bandeja de WhatsApp</span></span>
+      </div>
+      <div class="connection" id="connection"><span class="connection-dot"></span><span id="connection-label">Conectando</span></div>
+    </div>
+
+    <section class="intro">
+      <p class="eyebrow">Tu equipo, al día</p>
+      <h1>Hola, aquí están tus tareas.</h1>
+      <p class="intro-copy">Cada mensaje de WhatsApp se convierte en algo que puedes resolver.</p>
+    </section>
+
+    <section class="summary" aria-label="Resumen de tareas">
+      <article class="stat primary">
+        <span class="stat-label">Por hacer</span>
+        <strong class="stat-value" id="pending-count">—</strong>
+        <span class="stat-foot" id="pending-foot">Tareas pendientes</span>
+      </article>
+      <article class="stat">
+        <span class="stat-label">Recibidas hoy</span>
+        <strong class="stat-value" id="today-count">—</strong>
+        <span class="stat-foot">Nuevos mensajes de WhatsApp</span>
+      </article>
+      <article class="stat">
+        <span class="stat-label">Completadas</span>
+        <strong class="stat-value" id="done-count">—</strong>
+        <span class="stat-foot">Buen trabajo en equipo</span>
+      </article>
+    </section>
+
+    <section class="panel" aria-labelledby="list-title">
+      <div class="panel-head">
+        <div class="panel-title-row">
+          <h2 id="list-title">Bandeja de tareas</h2>
+          <span class="result-count" id="result-count"></span>
+        </div>
+        <div class="controls">
+          <div class="filters" role="group" aria-label="Filtrar tareas">
+            <button class="filter" type="button" data-status="pending" aria-pressed="true">Por hacer</button>
+            <button class="filter" type="button" data-status="done" aria-pressed="false">Hechas</button>
+            <button class="filter" type="button" data-status="all" aria-pressed="false">Todas</button>
+          </div>
+          <label class="search-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg>
+            <input class="search" id="search" type="search" placeholder="Buscar tarea o persona" aria-label="Buscar tareas">
+          </label>
+          <button class="refresh" type="button" id="refresh" aria-label="Actualizar tareas" title="Actualizar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5"/><path d="M4.5 16a8 8 0 0 0 13.7 2.2L20 16M4 12a8 8 0 0 1 13.7-5.8L20 8"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="alert" id="alert" role="alert"></div>
+      <ul class="task-list" id="task-list" aria-live="polite"></ul>
+    </section>
+    <p class="footer">Los cambios se sincronizan automáticamente para todo el equipo.</p>
+  </main>
+
+  <template id="task-template">
+    <li class="task">
+      <button class="task-check" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4.5 4.5L19 7"/></svg>
+      </button>
+      <div class="task-main">
+        <div class="task-meta"><strong class="task-sender"></strong><span class="task-id"></span><time class="task-time"></time></div>
+        <p class="task-body"></p>
+        <p class="task-note"></p>
+      </div>
+      <div class="task-actions"><span class="badge"></span><button class="delete" type="button">Eliminar</button></div>
+    </li>
+  </template>
+
+  <script>
+    const state = { status: 'pending', tasks: [], counts: { pending: 0, done: 0, today: 0 }, query: '' };
+    const $ = (id) => document.getElementById(id);
+    const timeFormat = new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium', timeStyle: 'short' });
+    const relativeFormat = new Intl.RelativeTimeFormat('es', { numeric: 'auto' });
+
+    function ago(timestamp) {
+      const seconds = Math.round((timestamp - Date.now()) / 1000);
+      for (const [unit, size] of [['day', 86400], ['hour', 3600], ['minute', 60]]) {
+        if (Math.abs(seconds) >= size) return relativeFormat.format(Math.round(seconds / size), unit);
+      }
+      return 'ahora mismo';
+    }
+
+    function safeLinks(element, text) {
+      element.textContent = '';
+      text.split(/(https?:\/\/[^\s]+)/g).forEach((part, index) => {
+        if (index % 2 === 0) {
+          element.append(document.createTextNode(part));
+          return;
+        }
+        try {
+          const url = new URL(part);
+          if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Unsupported URL protocol');
+          const anchor = document.createElement('a');
+          anchor.href = url.href;
+          anchor.target = '_blank';
+          anchor.rel = 'noopener noreferrer';
+          anchor.textContent = part;
+          element.append(anchor);
+        } catch {
+          element.append(document.createTextNode(part));
+        }
+      });
+    }
+
+    function render() {
+      $('pending-count').textContent = state.counts.pending ?? 0;
+      $('today-count').textContent = state.counts.today ?? 0;
+      $('done-count').textContent = state.counts.done ?? 0;
+      $('pending-foot').textContent = state.counts.pending === 1 ? 'Tarea pendiente' : 'Tareas pendientes';
+      const query = state.query.toLocaleLowerCase('es');
+      const items = state.tasks.filter((task) => !query
+        || task.body.toLocaleLowerCase('es').includes(query)
+        || (task.from_name || '').toLocaleLowerCase('es').includes(query)
+        || task.from_number.includes(query));
+      $('result-count').textContent = `${items.length} ${items.length === 1 ? 'tarea' : 'tareas'}`;
+      const list = $('task-list');
+      list.replaceChildren();
+      if (items.length === 0) {
+        const empty = document.createElement('li');
+        empty.className = 'empty';
+        const icon = document.createElement('span');
+        icon.className = 'empty-icon';
+        icon.setAttribute('aria-hidden', 'true');
+        icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4.5 4.5L19 7"/><circle cx="12" cy="12" r="10"/></svg>';
+        const title = document.createElement('p');
+        title.className = 'empty-title';
+        title.textContent = state.query ? 'No encontramos coincidencias' : state.status === 'done' ? 'Aún no hay tareas hechas' : 'Todo al día';
+        const copy = document.createElement('p');
+        copy.className = 'empty-copy';
+        copy.textContent = state.query ? 'Prueba con otra búsqueda.' : state.status === 'done' ? 'Cuando completes una tarea, aparecerá aquí.' : 'Las nuevas tareas de WhatsApp aparecerán aquí.';
+        empty.append(icon, title, copy);
+        list.append(empty);
+        return;
+      }
+
+      for (const task of items) {
+        const item = $('task-template').content.firstElementChild.cloneNode(true);
+        item.classList.toggle('is-done', Boolean(task.done));
+        const toggle = item.querySelector('.task-check');
+        toggle.setAttribute('aria-pressed', String(Boolean(task.done)));
+        toggle.setAttribute('aria-label', task.done ? 'Volver a pendiente' : 'Marcar como hecha');
+        toggle.title = task.done ? 'Volver a pendiente' : 'Marcar como hecha';
+        toggle.addEventListener('click', () => updateTask(task, !task.done));
+
+        const sender = item.querySelector('.task-sender');
+        sender.textContent = task.from_name || `+${task.from_number}`;
+        sender.title = `+${task.from_number}`;
+        item.querySelector('.task-id').textContent = `#${task.id}`;
+        const received = item.querySelector('.task-time');
+        received.textContent = ago(task.received_at);
+        received.dateTime = new Date(task.received_at).toISOString();
+        received.title = timeFormat.format(task.received_at);
+        safeLinks(item.querySelector('.task-body'), task.body);
+
+        const badge = item.querySelector('.badge');
+        badge.textContent = task.done ? 'Hecha' : 'Pendiente';
+        badge.classList.toggle('done', Boolean(task.done));
+        const note = item.querySelector('.task-note');
+        const remove = item.querySelector('.delete');
+        remove.hidden = !task.done;
+        remove.addEventListener('click', () => deleteTask(task));
+        if (task.done) {
+          note.textContent = `Completada ${ago(task.done_at)}${task.done_by ? ` por ${task.done_by}` : ''}`;
+        } else if (Date.now() - task.received_at > 86400000) {
+          badge.textContent = 'Pendiente · +1 día';
+        }
+        item.dataset.id = task.id;
+        list.append(item);
+      }
+    }
+
+    function showError(message) {
+      const alert = $('alert');
+      alert.textContent = message;
+      alert.classList.toggle('show', Boolean(message));
+    }
+
+    async function loadTasks() {
+      try {
+        const response = await fetch(`/api/tasks?status=${encodeURIComponent(state.status)}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        state.tasks = data.tasks;
+        state.counts = data.counts;
+        showError('');
+        render();
+      } catch {
+        showError('No se pudieron cargar las tareas. Comprueba la conexión e inténtalo de nuevo.');
+      }
+    }
+
+    async function updateTask(task, done) {
+      try {
+        const response = await fetch(`/api/tasks/${task.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ done }),
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        await loadTasks();
+      } catch {
+        showError('No se pudo actualizar la tarea. Inténtalo otra vez.');
+      }
+    }
+
+    async function deleteTask(task) {
+      if (!window.confirm(`¿Eliminar la tarea #${task.id}? Esta acción no se puede deshacer.`)) return;
+      try {
+        const response = await fetch(`/api/tasks/${task.id}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        await loadTasks();
+      } catch {
+        showError('No se pudo eliminar la tarea. Inténtalo otra vez.');
+      }
+    }
+
+    document.querySelectorAll('.filter').forEach((button) => {
+      button.addEventListener('click', () => {
+        state.status = button.dataset.status;
+        document.querySelectorAll('.filter').forEach((filter) => {
+          filter.setAttribute('aria-pressed', String(filter === button));
+        });
+        loadTasks();
+      });
+    });
+    $('search').addEventListener('input', (event) => {
+      state.query = event.target.value.trim();
+      render();
+    });
+    $('refresh').addEventListener('click', loadTasks);
+    setInterval(render, 60000);
+
+    const events = new EventSource('/api/events');
+    events.onopen = () => {
+      $('connection').classList.add('on');
+      $('connection-label').textContent = 'En directo';
+      loadTasks();
+    };
+    events.onerror = () => {
+      $('connection').classList.remove('on');
+      $('connection-label').textContent = 'Reconectando';
+    };
+    for (const eventName of ['task:new', 'task:update', 'task:delete']) {
+      events.addEventListener(eventName, loadTasks);
+    }
+    loadTasks();
+  </script>
+</body>
+</html>
