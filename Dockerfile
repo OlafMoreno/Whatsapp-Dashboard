@@ -1,13 +1,9 @@
 FROM php:8.4-apache
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends libcurl4-openssl-dev \
-    && docker-php-ext-install pdo_mysql curl \
+RUN docker-php-ext-install pdo_mysql \
     && a2enmod rewrite \
     && printf '<Directory /var/www/html>\n    AllowOverride All\n    Require all granted\n</Directory>\n' > /etc/apache2/conf-available/app-directory.conf \
-    && a2enconf app-directory \
-    && apt-get purge -y --auto-remove libcurl4-openssl-dev \
-    && rm -rf /var/lib/apt/lists/*
+    && a2enconf app-directory
 
 WORKDIR /var/www/html
 COPY php/ ./

@@ -82,9 +82,6 @@ Si la aplicación de Meta está en modo desarrollo, solo recibirá mensajes de s
 - Evita duplicados cuando Meta reenvía un mensaje.
 - Guarda mensajes de texto, imágenes, vídeos, documentos, audio, ubicaciones y respuestas interactivas.
 - Comprueba la firma `X-Hub-Signature-256` cuando se configura `WHATSAPP_APP_SECRET`.
-- Respuestas de WhatsApp opcionales: `REPLY_ON_RECEIVE=true` para confirmar la recepción y `NOTIFY_ON_DONE=true` para avisar al completarla. Requieren `WHATSAPP_ACCESS_TOKEN` y `WHATSAPP_PHONE_NUMBER_ID`.
-
-Los mensajes de texto libres de WhatsApp solo se pueden enviar durante las 24 horas siguientes al último mensaje de esa persona. Después de ese plazo se necesita una plantilla aprobada por Meta.
 
 ## Archivos de configuración
 

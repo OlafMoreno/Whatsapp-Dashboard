@@ -9,11 +9,6 @@ $config = [
     'db_password' => getenv('MYSQL_PASSWORD') ?: '',
     'verify_token' => getenv('WHATSAPP_VERIFY_TOKEN') ?: '',
     'app_secret' => getenv('WHATSAPP_APP_SECRET') ?: '',
-    'access_token' => getenv('WHATSAPP_ACCESS_TOKEN') ?: '',
-    'phone_number_id' => getenv('WHATSAPP_PHONE_NUMBER_ID') ?: '',
-    'graph_api_version' => getenv('GRAPH_API_VERSION') ?: 'v26.0',
-    'reply_on_receive' => getenv('REPLY_ON_RECEIVE') === 'true',
-    'notify_on_done' => getenv('NOTIFY_ON_DONE') === 'true',
     'app_mode' => getenv('APP_MODE') ?: 'dashboard',
     'dev_live_reload' => getenv('DEV_LIVE_RELOAD') === 'true',
 ];
@@ -181,48 +176,6 @@ function locationBody(array $location): string
     return trim('📍 ' . $label . $map);
 }
 
-function sendWhatsAppText(array $config, string $to, string $text): void
-{
-    if ($config['access_token'] === '' || $config['phone_number_id'] === '') {
-        return;
-    }
-    if (!function_exists('curl_init')) {
-        error_log('No se puede enviar WhatsApp: falta la extensión PHP cURL.');
-        return;
-    }
-
-    $url = sprintf(
-        'https://graph.facebook.com/%s/%s/messages',
-        $config['graph_api_version'],
-        rawurlencode($config['phone_number_id'])
-    );
-    $payload = json_encode([
-        'messaging_product' => 'whatsapp',
-        'to' => $to,
-        'type' => 'text',
-        'text' => ['body' => $text],
-    ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
-    $curl = curl_init($url);
-    curl_setopt_array($curl, [
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => $payload,
-        CURLOPT_HTTPHEADER => [
-            'Authorization: Bearer ' . $config['access_token'],
-            'Content-Type: application/json',
-        ],
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_CONNECTTIMEOUT => 3,
-        CURLOPT_TIMEOUT => 8,
-    ]);
-    $response = curl_exec($curl);
-    $status = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
-    $error = curl_error($curl);
-    curl_close($curl);
-    if ($response === false || $status < 200 || $status >= 300) {
-        error_log(sprintf('Error enviando WhatsApp: HTTP %d %s %s', $status, $error, substr((string) $response, 0, 1000)));
-    }
-}
-
 function validWebhookSignature(string $body, string $appSecret): bool
 {
     if ($appSecret === '') {
@@ -268,7 +221,6 @@ function webhook(PDO $db, array $config, string $method): never
         jsonResponse(['error' => 'Evento no soportado'], 400);
     }
 
-    $replies = [];
     try {
         $db->beginTransaction();
         $insert = $db->prepare(
@@ -312,12 +264,6 @@ function webhook(PDO $db, array $config, string $method): never
                     $task = normalizeTask($select->fetch());
                     publishEvent($db, 'task:new', $task);
                     error_log(sprintf('Nueva tarea #%d de %s', $task['id'], $task['from_name'] ?: $task['from_number']));
-                    if ($config['reply_on_receive']) {
-                        $replies[] = [
-                            'to' => $from,
-                            'text' => "✅ Tarea #{$task['id']} recibida. Te avisamos cuando esté hecha.",
-                        ];
-                    }
                 }
             }
         }
@@ -331,9 +277,6 @@ function webhook(PDO $db, array $config, string $method): never
         exit;
     }
 
-    foreach ($replies as $reply) {
-        sendWhatsAppText($config, $reply['to'], $reply['text']);
-    }
     http_response_code(200);
     exit;
 }
@@ -414,13 +357,6 @@ if (preg_match('#^/api/tasks/([1-9][0-9]*)$#', $path, $matches)) {
         }
         $task = normalizeTask($taskRow);
         publishEvent($db, 'task:update', $task);
-        if ($task['done'] && $config['notify_on_done']) {
-            sendWhatsAppText(
-                $config,
-                $task['from_number'],
-                '✔️ Tu tarea #' . $task['id'] . ' está hecha: "' . substr($task['body'], 0, 120) . '"'
-            );
-        }
         jsonResponse($task);
     }
     if ($method === 'DELETE') {
