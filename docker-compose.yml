@@ -69,6 +69,7 @@ services:
     image: mariadb:11.4
     restart: unless-stopped
     environment:
+      TZ: Europe/Madrid
       MARIADB_DATABASE: ${MYSQL_DATABASE:-whatsapp_tasks}
       MARIADB_USER: ${MYSQL_USER:-whatsapp_app}
       MARIADB_PASSWORD: ${MYSQL_PASSWORD:?Configura MYSQL_PASSWORD en .env}

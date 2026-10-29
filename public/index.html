@@ -254,11 +254,11 @@
   <main class="container-fluid dashboard-shell px-3 px-lg-4 py-4 py-lg-5">
     <header class="d-flex flex-wrap justify-content-between align-items-center gap-3">
       <div class="d-flex align-items-center gap-3">
-        <span class="brand-mark" aria-hidden="true">
+        <span class="tv-hide brand-mark" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5a7.5 7.5 0 0 1-11.2 6.5L4 19l1.1-4.1A7.5 7.5 0 1 1 20 11.5Z"/><path d="m8.8 11.8 2 2 4.3-4.5"/></svg>
         </span>
         <div>
-          <div class="fw-bold">Tareas</div>
+          <div class="tv-hide fw-bold">Tareas</div>
         </div>
       </div>
       <div class="d-flex flex-wrap align-items-center justify-content-end gap-2">
@@ -418,14 +418,22 @@
       loadTasks();
     }
 
-    function ago(timestamp) {
-      const seconds = Math.round((timestamp - Date.now()) / 1000);
-      for (const [unit, size] of [['day', 86400], ['hour', 3600], ['minute', 60]]) {
-        if (Math.abs(seconds) >= size) return relativeFormat.format(Math.round(seconds / size), unit);
-      }
-      return 'ahora mismo';
+    function ago(date) {
+        const timestamp = typeof date === 'number' ? date : new Date(date).getTime();
+        const seconds = Math.floor((Date.now() - timestamp) / 1000);
+        
+        // Si la diferencia es menor a 0 (ej. servidor con reloj ligeramente adelantado)
+        if (seconds < 0) return 'hace un momento';
+        if (seconds < 60) return 'hace un momento';
+        
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return `hace ${minutes} min`;
+        
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `hace ${hours} h`;
+        
+        return new Date(timestamp).toLocaleDateString();
     }
-
     function safeLinks(element, text) {
       element.textContent = '';
       text.split(/(https?:\/\/[^\s]+)/g).forEach((part, index) => {
@@ -497,10 +505,37 @@
         sender.textContent = task.from_name || `+${task.from_number}`;
         sender.title = `+${task.from_number}`;
         item.querySelector('.task-id').textContent = `#${task.id}`;
+        const timeFormat = new Intl.DateTimeFormat(navigator.language, {
+          dateStyle: 'short',
+          timeStyle: 'medium',
+          timeZone: 'UTC' // <--- Mantiene las 15:02:39 sin sumar tu zona local
+        });
+
+        // Convertir timestamp a objeto Date
+        // Capturar el timestamp del servidor (1793286159000)
+const rawTimestamp = task.received_at;
+
+// Convertir los minutos de desfase local del navegador a milisegundos
+const timezoneOffsetMs = new Date(rawTimestamp).getTimezoneOffset() * 60 * 1000;
+
+// Ajustar el timestamp restando el desfase guardado por error
+const dateObj = new Date(rawTimestamp + timezoneOffsetMs);
+
+        const received = item.querySelector('.task-time');
+
+        // 1. "hace 20 min"
+        received.textContent = ago(dateObj);
+        // 2. "2026-10-29T15:02:39.000Z"
+        received.dateTime = dateObj.toISOString(); 
+
+        // 3. Muestra "29/10/2026, 16:02:39" (en hora local CET/CEST de España)
+        received.title = timeFormat.format(dateObj);
+        /*
         const received = item.querySelector('.task-time');
         received.textContent = ago(task.received_at);
         received.dateTime = new Date(task.received_at).toISOString();
         received.title = timeFormat.format(task.received_at);
+        */
         safeLinks(item.querySelector('.task-body'), task.body);
 
         const badge = item.querySelector('.badge');
