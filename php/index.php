@@ -16,7 +16,75 @@ $config = [
     'notify_on_done' => getenv('NOTIFY_ON_DONE') === 'true',
     'dashboard_user' => getenv('DASHBOARD_USER') ?: '',
     'dashboard_password' => getenv('DASHBOARD_PASSWORD') ?: '',
+    'app_mode' => getenv('APP_MODE') ?: 'dashboard',
+    'dev_live_reload' => getenv('DEV_LIVE_RELOAD') === 'true',
 ];
+
+if (!in_array($config['app_mode'], ['dashboard', 'webhook'], true)) {
+    error_log('APP_MODE debe ser dashboard o webhook.');
+    http_response_code(500);
+    exit;
+}
+
+$path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+if (($config['app_mode'] === 'webhook' && !in_array($path, ['/health', '/webhook'], true))
+    || ($config['app_mode'] === 'dashboard' && $path === '/webhook')) {
+    http_response_code(404);
+    exit;
+}
+
+function jsonResponse(mixed $data, int $status = 200): never
+{
+    http_response_code($status);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+    exit;
+}
+
+if ($path === '/api/dev-version' && $method === 'GET') {
+    if ($config['app_mode'] !== 'dashboard' || !$config['dev_live_reload']) {
+        jsonResponse(['error' => 'Ruta no encontrada'], 404);
+    }
+    $files = [];
+    foreach ([__DIR__, '/opt/whatsapp-tareas/public'] as $directory) {
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($directory, FilesystemIterator::SKIP_DOTS)
+        );
+        foreach ($iterator as $file) {
+            if ($file->isFile()) {
+                $files[] = $file->getPathname();
+            }
+        }
+    }
+    sort($files);
+    $versionParts = [];
+    foreach ($files as $file) {
+        $fileHash = hash_file('sha256', $file);
+        if ($fileHash === false) {
+            error_log('No se pudo calcular la versión del archivo: ' . $file);
+            jsonResponse(['error' => 'No se pudo comprobar la versión de la aplicación'], 500);
+        }
+        $versionParts[] = $file . ':' . $fileHash;
+    }
+    jsonResponse(['version' => hash('sha256', implode("\n", $versionParts))]);
+}
+
+if ($path === '/assets/bootstrap.min.css' && $method === 'GET' && $config['app_mode'] === 'dashboard') {
+    $stylesheet = '/opt/whatsapp-tareas/public/assets/bootstrap.min.css';
+    if (!is_file($stylesheet)) {
+        error_log('No se encuentra la hoja de estilos local de Bootstrap.');
+        http_response_code(500);
+        exit;
+    }
+    header('Content-Type: text/css; charset=utf-8');
+    header('Cache-Control: no-cache');
+    if (readfile($stylesheet) === false) {
+        error_log('No se pudo leer la hoja de estilos local de Bootstrap.');
+        http_response_code(500);
+    }
+    exit;
+}
 
 try {
     $db = new PDO(
@@ -39,14 +107,6 @@ try {
     http_response_code(503);
     header('Content-Type: application/json; charset=utf-8');
     echo '{"error":"Base de datos no disponible"}';
-    exit;
-}
-
-function jsonResponse(mixed $data, int $status = 200): never
-{
-    http_response_code($status);
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
     exit;
 }
 
@@ -164,7 +224,7 @@ function validWebhookSignature(string $body, string $appSecret): bool
         && hash_equals('sha256=' . hash_hmac('sha256', $body, $appSecret), strtolower($signature));
 }
 
-function dashboardUser(array $config): ?string
+function authenticatedDashboardUser(array $config): ?string
 {
     if ($config['dashboard_user'] === '' || $config['dashboard_password'] === '') {
         return null;
@@ -182,7 +242,15 @@ function dashboardUser(array $config): ?string
         && hash_equals($config['dashboard_password'], $password)) {
         return $user;
     }
+    return null;
+}
 
+function requireDashboardUser(array $config): string
+{
+    $user = authenticatedDashboardUser($config);
+    if ($user !== null) {
+        return $user;
+    }
     header('WWW-Authenticate: Basic realm="Tareas", charset="UTF-8"');
     http_response_code(401);
     echo 'Acceso restringido';
@@ -292,9 +360,6 @@ function webhook(PDO $db, array $config, string $method): never
     exit;
 }
 
-$path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
-$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-
 if ($path === '/health' && $method === 'GET') {
     jsonResponse(['ok' => true]);
 }
@@ -302,11 +367,14 @@ if ($path === '/webhook') {
     webhook($db, $config, $method);
 }
 
-$user = dashboardUser($config);
-
 if ($path === '/' || $path === '/index.php') {
-    readfile('/opt/whatsapp-tareas/dashboard.html');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    readfile('/opt/whatsapp-tareas/public/index.html');
     exit;
+}
+
+if ($path === '/api/session' && $method === 'GET') {
+    jsonResponse(['can_manage' => authenticatedDashboardUser($config) !== null]);
 }
 
 if ($path === '/api/tasks' && $method === 'GET') {
@@ -338,6 +406,12 @@ if ($path === '/api/tasks' && $method === 'GET') {
 }
 
 if (preg_match('#^/api/tasks/([1-9][0-9]*)$#', $path, $matches)) {
+    if ($method !== 'PATCH' && $method !== 'DELETE') {
+        header('Allow: PATCH, DELETE');
+        http_response_code(405);
+        exit;
+    }
+    $user = requireDashboardUser($config);
     $taskId = (int) $matches[1];
     $find = $db->prepare('SELECT * FROM tasks WHERE id = ?');
     $find->execute([$taskId]);
@@ -380,9 +454,6 @@ if (preg_match('#^/api/tasks/([1-9][0-9]*)$#', $path, $matches)) {
         http_response_code(204);
         exit;
     }
-    header('Allow: PATCH, DELETE');
-    http_response_code(405);
-    exit;
 }
 
 if ($path === '/api/events' && $method === 'GET') {

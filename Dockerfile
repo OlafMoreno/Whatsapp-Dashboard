@@ -11,8 +11,7 @@ RUN apt-get update \
 
 WORKDIR /var/www/html
 COPY php/ ./
-COPY public/index.html /opt/whatsapp-tareas/dashboard.html
-COPY .htaccess ./
+COPY public/ /opt/whatsapp-tareas/public/
 
 EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \

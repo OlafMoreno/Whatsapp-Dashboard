@@ -4,6 +4,40 @@ services:
     image: whatsapp-tareas:latest
     restart: unless-stopped
     environment:
+      APP_MODE: dashboard
+      DB_HOST: db
+      DB_PORT: 3306
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-whatsapp_tasks}
+      MYSQL_USER: ${MYSQL_USER:-whatsapp_app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Configura MYSQL_PASSWORD en .env}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      GRAPH_API_VERSION: ${GRAPH_API_VERSION:-v26.0}
+      NOTIFY_ON_DONE: ${NOTIFY_ON_DONE:-false}
+      DASHBOARD_USER: ${DASHBOARD_USER:?Configura DASHBOARD_USER en .env}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:?Configura DASHBOARD_PASSWORD en .env}
+      DEV_LIVE_RELOAD: ${DEV_LIVE_RELOAD:-true}
+    volumes:
+      - ./php:/var/www/html:ro
+      - ./public:/opt/whatsapp-tareas/public:ro
+    ports:
+      - "${HOST_BIND:-0.0.0.0}:${HOST_PORT:-8080}:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "php -r \"exit(@file_get_contents('http://127.0.0.1/health') === false ? 1 : 0);\""]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+  webhook:
+    build: .
+    image: whatsapp-tareas:latest
+    restart: unless-stopped
+    environment:
+      APP_MODE: webhook
       DB_HOST: db
       DB_PORT: 3306
       MYSQL_DATABASE: ${MYSQL_DATABASE:-whatsapp_tasks}
@@ -15,11 +49,10 @@ services:
       WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
       GRAPH_API_VERSION: ${GRAPH_API_VERSION:-v26.0}
       REPLY_ON_RECEIVE: ${REPLY_ON_RECEIVE:-false}
-      NOTIFY_ON_DONE: ${NOTIFY_ON_DONE:-false}
-      DASHBOARD_USER: ${DASHBOARD_USER:?Configura DASHBOARD_USER en .env}
-      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:?Configura DASHBOARD_PASSWORD en .env}
+    volumes:
+      - ./php:/var/www/html:ro
     ports:
-      - "${HOST_BIND:-0.0.0.0}:${HOST_PORT:-8080}:80"
+      - "${WEBHOOK_HOST_BIND:-127.0.0.1}:${WEBHOOK_HOST_PORT:-8081}:80"
     depends_on:
       db:
         condition: service_healthy

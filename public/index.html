@@ -3,252 +3,472 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f2f5f2">
+  <meta name="theme-color" content="#f4f7f5">
   <title>Mis tareas · WhatsApp</title>
+  <link rel="stylesheet" href="/assets/bootstrap.min.css">
   <style>
     :root {
-      color-scheme: light;
-      --page: #f2f5f2;
-      --surface: #fff;
-      --ink: #16231e;
-      --muted: #718078;
-      --line: #e4eae5;
-      --green: #15734c;
-      --green-dark: #10583b;
-      --green-soft: #e6f4eb;
-      --amber: #92610d;
-      --amber-soft: #fff4d9;
-      --red: #a13838;
-      --focus: #248a5b;
-      --shadow: 0 12px 40px rgb(22 43 31 / 6%);
+      --app-green: #15734c;
+      --app-green-dark: #10583b;
+      --app-muted: #68776e;
+      --app-line: #e3eae5;
     }
-    * { box-sizing: border-box; }
+
     body {
-      margin: 0;
       min-height: 100vh;
-      background:
-        radial-gradient(ellipse at 85% 0, rgb(220 238 223 / 70%), transparent 35rem),
-        var(--page);
-      color: var(--ink);
-      font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: #f4f7f5;
+      color: #17241d;
     }
-    button, input { font: inherit; }
-    button { color: inherit; }
-    button:focus-visible, input:focus-visible {
-      outline: 3px solid var(--focus);
-      outline-offset: 3px;
+
+    .dashboard-shell {
+      max-width: 1320px;
     }
-    .shell { width: min(1050px, 100% - 40px); margin: 0 auto; padding: 38px 0 72px; }
-    .topline { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
-    .brand { display: flex; align-items: center; gap: 12px; }
+
     .brand-mark {
-      display: grid; width: 43px; height: 43px; place-items: center; border-radius: 15px;
-      color: white; background: var(--green); box-shadow: 0 7px 18px rgb(21 115 76 / 20%);
+      display: grid;
+      width: 44px;
+      height: 44px;
+      flex: 0 0 44px;
+      place-items: center;
+      border-radius: 14px;
+      background: var(--app-green);
+      color: #fff;
     }
-    .brand-mark svg { width: 23px; height: 23px; }
-    .brand-name { font-weight: 750; letter-spacing: -.03em; }
-    .brand-caption { color: var(--muted); font-size: 12px; }
-    .connection {
-      display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px;
-      border: 1px solid var(--line); border-radius: 999px; background: rgb(255 255 255 / 76%);
-      color: var(--muted); font-size: 12px; font-weight: 600;
+
+    .brand-mark svg {
+      width: 24px;
+      height: 24px;
     }
-    .connection-dot { width: 8px; height: 8px; border-radius: 50%; background: #d29b36; }
-    .connection.on .connection-dot { background: #2b9b66; box-shadow: 0 0 0 3px #e6f4eb; }
-    .intro { margin: 50px 0 25px; }
-    .eyebrow {
-      margin: 0 0 8px; color: var(--green); font-size: 11px; font-weight: 800;
-      letter-spacing: .13em; text-transform: uppercase;
+
+    .brand-caption,
+    .text-muted-app {
+      color: var(--app-muted);
     }
-    h1 { margin: 0; font-size: clamp(32px, 5vw, 46px); line-height: 1.1; letter-spacing: -.055em; }
-    .intro-copy { margin: 10px 0 0; color: var(--muted); font-size: 15px; }
-    .summary { display: grid; grid-template-columns: 1.25fr 1fr 1fr; gap: 14px; margin: 29px 0 32px; }
-    .stat {
-      min-height: 126px; padding: 20px; border: 1px solid var(--line);
-      border-radius: 18px; background: var(--surface); box-shadow: var(--shadow);
+
+    .connection-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #f0ad4e;
     }
-    .stat.primary { color: white; border-color: transparent; background: var(--green); }
-    .stat-label { display: block; color: var(--muted); font-size: 12px; font-weight: 650; }
-    .primary .stat-label { color: rgb(255 255 255 / 76%); }
-    .stat-value { display: block; margin-top: 9px; font-size: 37px; font-weight: 770; letter-spacing: -.06em; line-height: 1; }
-    .stat-foot { display: block; margin-top: 9px; font-size: 12px; color: var(--muted); }
-    .primary .stat-foot { color: rgb(255 255 255 / 76%); }
-    .panel {
-      overflow: hidden; border: 1px solid var(--line); border-radius: 20px;
-      background: var(--surface); box-shadow: var(--shadow);
+
+    .connection.on .connection-dot {
+      background: #198754;
+      box-shadow: 0 0 0 3px rgb(25 135 84 / 14%);
     }
-    .panel-head { padding: 23px 24px 18px; }
-    .panel-title-row { display: flex; justify-content: space-between; align-items: center; gap: 14px; }
-    h2 { margin: 0; font-size: 19px; letter-spacing: -.035em; }
-    .result-count { color: var(--muted); font-size: 12px; }
-    .controls { display: flex; align-items: center; gap: 11px; margin-top: 18px; }
-    .filters {
-      display: inline-flex; flex: 0 0 auto; gap: 3px; padding: 4px;
-      border: 1px solid var(--line); border-radius: 12px; background: #f7f9f7;
+
+    .stat-card {
+      min-height: 132px;
     }
-    .filter {
-      min-height: 36px; padding: 7px 12px; border: 0; border-radius: 9px;
-      background: transparent; color: var(--muted); font-size: 12px; font-weight: 650; cursor: pointer;
+
+    .stat-card-primary {
+      border: 0;
+      background: var(--app-green);
+      color: #fff;
     }
-    .filter[aria-pressed="true"] { background: var(--surface); color: var(--green-dark); box-shadow: 0 1px 5px rgb(20 40 28 / 10%); }
-    .search-wrap { position: relative; flex: 1; min-width: 120px; }
-    .search-wrap svg { position: absolute; top: 50%; left: 13px; width: 17px; height: 17px; color: #85928a; transform: translateY(-50%); pointer-events: none; }
-    .search {
-      width: 100%; height: 44px; padding: 0 13px 0 39px; border: 1px solid var(--line);
-      border-radius: 12px; background: white; color: var(--ink); font-size: 13px;
+
+    .stat-card-primary .text-muted-app {
+      color: rgb(255 255 255 / 75%);
     }
-    .refresh {
-      display: grid; flex: 0 0 44px; width: 44px; height: 44px; place-items: center;
-      border: 1px solid var(--line); border-radius: 12px; background: white; cursor: pointer;
+
+    .filter.active {
+      background: var(--app-green);
+      border-color: var(--app-green);
+      color: #fff;
     }
-    .refresh:hover { background: #f6f9f6; }
-    .refresh svg { width: 17px; height: 17px; }
-    .alert { display: none; margin: 0 24px 15px; padding: 12px 14px; border-radius: 11px; background: #fff0ef; color: var(--red); font-size: 13px; }
-    .alert.show { display: block; }
-    .task-list { list-style: none; margin: 0; padding: 0 24px; }
-    .task {
-      display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; gap: 15px;
-      align-items: start; padding: 20px 0; border-top: 1px solid var(--line);
-      animation: enter .2s ease-out;
+
+    .filter:not(.active) {
+      border-color: var(--app-line);
+      background: #fff;
+      color: #45554b;
     }
-    @keyframes enter { from { opacity: .4; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+
+    .filter:not(.active):hover {
+      border-color: var(--app-green);
+      color: var(--app-green-dark);
+    }
+
+    .task-list {
+      margin: 0;
+      padding: 0 1.25rem 1rem;
+      list-style: none;
+    }
+
+    .task + .task {
+      border-top: 1px solid var(--app-line);
+    }
+
+    .task-body {
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+
+    .min-w-0 {
+      min-width: 0;
+    }
+
+    .task-body a {
+      color: var(--app-green-dark);
+      text-underline-offset: 3px;
+    }
+
+    .task-note:empty {
+      display: none;
+    }
+
+    .task.is-done .task-body {
+      color: var(--app-muted);
+    }
+
+    .task.is-new {
+      animation: task-highlight 3.5s ease-out;
+    }
+
+    @keyframes task-highlight {
+      0%, 35% { background: #e6f4eb; }
+      100% { background: transparent; }
+    }
+
     .task-check {
-      display: grid; width: 37px; height: 37px; place-items: center; margin-top: 2px;
-      border: 1.5px solid #cbd6ce; border-radius: 12px; background: white; color: white; cursor: pointer;
-      transition: background .15s, border-color .15s, transform .15s;
+      display: grid;
+      width: 40px;
+      height: 40px;
+      flex: 0 0 40px;
+      place-items: center;
+      padding: 0;
     }
-    .task-check:hover { transform: scale(1.05); border-color: var(--green); }
-    .task-check svg { width: 19px; height: 19px; opacity: 0; }
-    .task-check[aria-pressed="true"] { border-color: var(--green); background: var(--green); }
-    .task-check[aria-pressed="true"] svg { opacity: 1; }
-    .task-main { min-width: 0; }
-    .task-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 7px 10px; color: var(--muted); font-size: 12px; }
-    .task-sender { color: var(--ink); font-size: 13px; font-weight: 700; }
-    .task-id { color: #8c9890; }
-    .task-body { margin: 7px 0 0; overflow-wrap: anywhere; white-space: pre-wrap; font-size: 15px; line-height: 1.55; }
-    .task-body a { color: var(--green-dark); text-decoration-thickness: 1px; text-underline-offset: 2px; }
-    .task-note { margin: 8px 0 0; color: var(--green); font-size: 12px; }
-    .task-actions { display: flex; align-items: center; gap: 8px; }
-    .badge { padding: 5px 9px; border-radius: 999px; background: var(--amber-soft); color: var(--amber); font-size: 11px; font-weight: 700; }
-    .badge.done { background: var(--green-soft); color: var(--green-dark); }
-    .delete {
-      padding: 6px 9px; border: 1px solid var(--line); border-radius: 9px;
-      background: white; color: var(--muted); font-size: 11px; cursor: pointer;
+
+    .task-check svg {
+      width: 20px;
+      height: 20px;
+      opacity: 0;
     }
-    .delete[hidden] { display: none; }
-    .delete:hover { border-color: #e3b9b5; color: var(--red); }
-    .task.is-done .task-body { color: var(--muted); }
-    .empty { padding: 63px 20px; border-top: 1px solid var(--line); text-align: center; }
-    .empty-icon { display: grid; width: 54px; height: 54px; place-items: center; margin: 0 auto 15px; border-radius: 18px; background: var(--green-soft); color: var(--green); }
-    .empty-icon svg { width: 25px; height: 25px; }
-    .empty-title { margin: 0; font-weight: 720; font-size: 16px; }
-    .empty-copy { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
-    .footer { margin-top: 17px; color: #8a968e; font-size: 11px; text-align: center; }
-    @media (max-width: 680px) {
-      .shell { width: min(100% - 28px, 560px); padding: 22px 0 48px; }
-      .intro { margin-top: 39px; }
-      .summary { gap: 9px; margin: 23px 0; }
-      .stat { min-height: 106px; padding: 15px 13px; border-radius: 15px; }
-      .stat-value { font-size: 31px; }
-      .stat-foot { font-size: 10px; }
-      .panel-head { padding: 19px 16px 14px; }
-      .controls { flex-wrap: wrap; }
-      .filters { width: 100%; }
-      .filter { flex: 1; }
-      .search-wrap { flex: 1; }
-      .task-list { padding: 0 16px; }
-      .task { grid-template-columns: 38px minmax(0, 1fr); gap: 10px; padding: 17px 0; }
-      .task-check { width: 34px; height: 34px; }
-      .task-actions { grid-column: 2; }
-      .alert { margin-right: 16px; margin-left: 16px; }
+
+    .task-check[aria-pressed="true"] {
+      background: var(--app-green);
+      color: #fff;
     }
+
+    .task-check[aria-pressed="true"] svg {
+      opacity: 1;
+    }
+
+    .task-check[hidden],
+    .delete[hidden] {
+      display: none !important;
+    }
+
+    .task-meta {
+      color: var(--app-muted);
+      font-size: .82rem;
+    }
+
+    .task-sender {
+      color: #17241d;
+      font-size: .95rem;
+    }
+
+    .task-id {
+      color: #89968e;
+    }
+
+    .empty-icon {
+      display: grid;
+      width: 56px;
+      height: 56px;
+      place-items: center;
+      margin: 0 auto 1rem;
+      border-radius: 18px;
+      background: #e6f4eb;
+      color: var(--app-green);
+    }
+
+    .empty-icon svg {
+      width: 26px;
+      height: 26px;
+    }
+
+    .new-task-banner {
+      z-index: 5;
+      top: 1rem;
+      left: 50%;
+      width: min(520px, calc(100% - 2rem));
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+
+    .admin-dialog {
+      width: min(440px, calc(100% - 2rem));
+      padding: 0;
+      border: 0;
+      border-radius: 1rem;
+      color: inherit;
+      box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 22%);
+    }
+
+    .admin-dialog::backdrop {
+      background: rgb(16 28 22 / 55%);
+    }
+
+    .dialog-error {
+      min-height: 1.25rem;
+    }
+
+    .tv-hide[hidden] {
+      display: none !important;
+    }
+
+    body.tv .dashboard-shell {
+      max-width: 1800px;
+    }
+
+    body.tv .tv-hide {
+      display: none !important;
+    }
+
+    body.tv .tv-intro {
+      margin-top: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    body.tv .tv-intro h1 {
+      font-size: clamp(2.4rem, 4vw, 4rem);
+    }
+
+    body.tv .tv-stat {
+      min-height: 100px;
+    }
+
+    body.tv .tv-stat .display-5 {
+      font-size: 2rem;
+    }
+
+    body.tv .tv-task-list {
+      max-height: calc(100vh - 360px);
+      overflow-y: auto;
+    }
+
+    body.tv .task-body {
+      font-size: clamp(1.15rem, 1.8vw, 1.65rem);
+    }
+
+    @media (max-width: 575.98px) {
+      .task-list {
+        padding-right: 1rem;
+        padding-left: 1rem;
+      }
+
+      .stat-card {
+        min-height: 110px;
+      }
+
+      body.tv .tv-task-list {
+        max-height: none;
+      }
+    }
+
     @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        transition-duration: .01ms !important;
+      }
     }
   </style>
 </head>
 <body>
-  <main class="shell">
-    <div class="topline">
-      <div class="brand">
+  <main class="container-fluid dashboard-shell px-3 px-lg-4 py-4 py-lg-5">
+    <header class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+      <div class="d-flex align-items-center gap-3">
         <span class="brand-mark" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5a7.5 7.5 0 0 1-11.2 6.5L4 19l1.1-4.1A7.5 7.5 0 1 1 20 11.5Z"/><path d="m8.8 11.8 2 2 4.3-4.5"/></svg>
         </span>
-        <span><span class="brand-name">Tareas</span><br><span class="brand-caption">Bandeja de WhatsApp</span></span>
-      </div>
-      <div class="connection" id="connection"><span class="connection-dot"></span><span id="connection-label">Conectando</span></div>
-    </div>
-
-    <section class="intro">
-      <p class="eyebrow">Tu equipo, al día</p>
-      <h1>Hola, aquí están tus tareas.</h1>
-      <p class="intro-copy">Cada mensaje de WhatsApp se convierte en algo que puedes resolver.</p>
-    </section>
-
-    <section class="summary" aria-label="Resumen de tareas">
-      <article class="stat primary">
-        <span class="stat-label">Por hacer</span>
-        <strong class="stat-value" id="pending-count">—</strong>
-        <span class="stat-foot" id="pending-foot">Tareas pendientes</span>
-      </article>
-      <article class="stat">
-        <span class="stat-label">Recibidas hoy</span>
-        <strong class="stat-value" id="today-count">—</strong>
-        <span class="stat-foot">Nuevos mensajes de WhatsApp</span>
-      </article>
-      <article class="stat">
-        <span class="stat-label">Completadas</span>
-        <strong class="stat-value" id="done-count">—</strong>
-        <span class="stat-foot">Buen trabajo en equipo</span>
-      </article>
-    </section>
-
-    <section class="panel" aria-labelledby="list-title">
-      <div class="panel-head">
-        <div class="panel-title-row">
-          <h2 id="list-title">Bandeja de tareas</h2>
-          <span class="result-count" id="result-count"></span>
+        <div>
+          <div class="fw-bold">Tareas</div>
+          <div class="brand-caption small">Bandeja de WhatsApp</div>
         </div>
-        <div class="controls">
-          <div class="filters" role="group" aria-label="Filtrar tareas">
-            <button class="filter" type="button" data-status="pending" aria-pressed="true">Por hacer</button>
-            <button class="filter" type="button" data-status="done" aria-pressed="false">Hechas</button>
-            <button class="filter" type="button" data-status="all" aria-pressed="false">Todas</button>
+      </div>
+      <div class="d-flex flex-wrap align-items-center justify-content-end gap-2">
+        <div class="connection badge rounded-pill text-bg-light border d-inline-flex align-items-center gap-2 px-3 py-2" id="connection">
+          <span class="connection-dot"></span>
+          <span id="connection-label">Conectando</span>
+        </div>
+        <button class="btn btn-outline-success btn-sm rounded-pill admin-action tv-hide" id="admin-action" type="button">Acceso administrador</button>
+        <button class="btn btn-outline-secondary btn-sm rounded-pill admin-action tv-hide" id="logout-action" type="button" hidden>Cerrar sesión</button>
+        <a class="btn btn-success btn-sm rounded-pill tv-hide" id="display-link" href="/?tv=1">Pantalla TV</a>
+      </div>
+    </header>
+
+    <section class="tv-intro mt-5 mb-4">
+      <p class="text-success text-uppercase fw-bold small mb-2">Tu equipo, al día</p>
+      <h1 class="display-6 fw-bold mb-2">Hola, aquí están tus tareas.</h1>
+      <p class="text-muted-app mb-0 tv-hide">Cada mensaje recibido por WhatsApp aparece aquí como una tarea pendiente.</p>
+    </section>
+
+    <section class="row row-cols-1 row-cols-sm-3 g-3 mb-4 tv-summary" aria-label="Resumen de tareas">
+      <div class="col">
+        <article class="card stat-card tv-stat stat-card-primary shadow-sm h-100">
+          <div class="card-body d-flex flex-column justify-content-between">
+            <span class="text-muted-app small fw-semibold">Por hacer</span>
+            <strong class="display-5 fw-bold lh-1" id="pending-count">—</strong>
           </div>
-          <label class="search-wrap">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg>
-            <input class="search" id="search" type="search" placeholder="Buscar tarea o persona" aria-label="Buscar tareas">
-          </label>
-          <button class="refresh" type="button" id="refresh" aria-label="Actualizar tareas" title="Actualizar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5"/><path d="M4.5 16a8 8 0 0 0 13.7 2.2L20 16M4 12a8 8 0 0 1 13.7-5.8L20 8"/></svg>
-          </button>
-        </div>
+        </article>
       </div>
-      <div class="alert" id="alert" role="alert"></div>
-      <ul class="task-list" id="task-list" aria-live="polite"></ul>
+      <div class="col">
+        <article class="card stat-card tv-stat border-0 shadow-sm h-100">
+          <div class="card-body d-flex flex-column justify-content-between">
+            <span class="text-muted-app small fw-semibold">Recibidas hoy</span>
+            <strong class="display-5 fw-bold lh-1" id="today-count">—</strong>
+          </div>
+        </article>
+      </div>
+      <div class="col">
+        <article class="card stat-card tv-stat border-0 shadow-sm h-100">
+          <div class="card-body d-flex flex-column justify-content-between">
+            <span class="text-muted-app small fw-semibold">Completadas</span>
+            <strong class="display-5 fw-bold lh-1" id="done-count">—</strong>
+          </div>
+        </article>
+      </div>
     </section>
-    <p class="footer">Los cambios se sincronizan automáticamente para todo el equipo.</p>
+
+    <section class="card border-0 shadow-sm" aria-labelledby="list-title">
+      <div class="card-body p-3 p-lg-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <h2 class="h4 fw-bold mb-0" id="list-title">Bandeja de tareas</h2>
+          <span class="small text-muted-app" id="result-count"></span>
+        </div>
+        <div class="row g-2 align-items-center mb-3 tv-hide">
+          <div class="col-12 col-lg-auto">
+            <div class="btn-group w-100" role="group" aria-label="Filtrar tareas">
+              <button class="btn btn-sm filter active" type="button" data-status="pending" aria-pressed="true">Por hacer</button>
+              <button class="btn btn-sm filter" type="button" data-status="done" aria-pressed="false">Hechas</button>
+              <button class="btn btn-sm filter" type="button" data-status="all" aria-pressed="false">Todas</button>
+            </div>
+          </div>
+          <div class="col">
+            <label class="visually-hidden" for="search">Buscar tareas</label>
+            <input class="form-control form-control-sm" id="search" type="search" placeholder="Buscar tarea o persona">
+          </div>
+          <div class="col-12 col-lg-auto">
+            <button class="btn btn-outline-secondary btn-sm w-100" type="button" id="refresh" aria-label="Actualizar tareas" title="Actualizar">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5"/><path d="M4.5 16a8 8 0 0 0 13.7 2.2L20 16M4 12a8 8 0 0 1 13.7-5.8L20 8"/></svg>
+              Actualizar
+            </button>
+          </div>
+        </div>
+        <div class="alert alert-danger py-2 mb-3 d-none" id="alert" role="alert"></div>
+      </div>
+      <ul class="task-list tv-task-list" id="task-list" aria-live="polite"></ul>
+    </section>
+
+    <p class="small text-center text-muted-app mt-3 mb-0">Los cambios se sincronizan automáticamente para todo el equipo.</p>
   </main>
 
-  <template id="task-template">
-    <li class="task">
-      <button class="task-check" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4.5 4.5L19 7"/></svg>
-      </button>
-      <div class="task-main">
-        <div class="task-meta"><strong class="task-sender"></strong><span class="task-id"></span><time class="task-time"></time></div>
-        <p class="task-body"></p>
-        <p class="task-note"></p>
+  <div class="alert alert-success new-task-banner position-fixed shadow d-none" id="new-task-banner" role="status" aria-live="polite"></div>
+
+  <dialog class="admin-dialog" id="admin-dialog">
+    <form class="p-4" id="admin-form">
+      <h2 class="h4 fw-bold mb-2">Acceso de administrador</h2>
+      <p class="small text-muted-app mb-4">La pantalla puede mostrar tareas sin iniciar sesión. Para marcarlas como hechas, introduce las credenciales de administrador.</p>
+      <label class="form-label fw-semibold" for="admin-user">Usuario</label>
+      <input class="form-control mb-3" id="admin-user" name="username" autocomplete="username" required>
+      <label class="form-label fw-semibold" for="admin-password">Contraseña</label>
+      <input class="form-control" id="admin-password" name="password" type="password" autocomplete="current-password" required>
+      <div class="dialog-error text-danger small mt-2" id="dialog-error" role="alert"></div>
+      <div class="d-flex justify-content-end gap-2 mt-3">
+        <button class="btn btn-outline-secondary" id="dialog-cancel" type="button">Cancelar</button>
+        <button class="btn btn-success" type="submit">Iniciar sesión</button>
       </div>
-      <div class="task-actions"><span class="badge"></span><button class="delete" type="button">Eliminar</button></div>
+    </form>
+  </dialog>
+
+  <template id="task-template">
+    <li class="task d-flex align-items-start gap-3 py-3">
+      <button class="task-check btn btn-outline-success rounded-circle" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4.5 4.5L19 7"/></svg>
+      </button>
+      <div class="task-main flex-grow-1 min-w-0">
+        <div class="task-meta d-flex flex-wrap align-items-center gap-2">
+          <strong class="task-sender"></strong>
+          <span class="task-id"></span>
+          <time class="task-time"></time>
+        </div>
+        <p class="task-body mb-0 mt-2"></p>
+        <p class="task-note small text-success mb-0 mt-2"></p>
+      </div>
+      <div class="task-actions d-flex align-items-center gap-2">
+        <span class="badge rounded-pill text-bg-warning"></span>
+        <button class="delete btn btn-outline-danger btn-sm" type="button">Eliminar</button>
+      </div>
     </li>
   </template>
 
   <script>
-    const state = { status: 'pending', tasks: [], counts: { pending: 0, done: 0, today: 0 }, query: '' };
+    const state = {
+      status: 'pending',
+      tasks: [],
+      counts: { pending: 0, done: 0, today: 0 },
+      query: '',
+      canManage: false,
+      authToken: '',
+      highlightId: null,
+      pendingAction: null,
+    };
     const $ = (id) => document.getElementById(id);
+    const tvMode = new URLSearchParams(location.search).get('tv') === '1';
+    document.body.classList.toggle('tv', tvMode);
+    try { state.authToken = sessionStorage.getItem('task-dashboard-auth') || ''; } catch {}
     const timeFormat = new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium', timeStyle: 'short' });
     const relativeFormat = new Intl.RelativeTimeFormat('es', { numeric: 'auto' });
+    let bannerTimer = 0;
+
+    function apiHeaders(headers = {}) {
+      const result = new Headers(headers);
+      if (state.authToken) result.set('Authorization', state.authToken);
+      return result;
+    }
+
+    async function refreshSession() {
+      const response = await fetch('/api/session', { headers: apiHeaders() });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const session = await response.json();
+      state.canManage = session.can_manage;
+      if (!state.canManage && state.authToken) {
+        state.authToken = '';
+        try { sessionStorage.removeItem('task-dashboard-auth'); } catch {}
+      }
+      $('admin-action').hidden = tvMode || state.canManage;
+      $('logout-action').hidden = tvMode || !state.canManage;
+      $('display-link').hidden = tvMode;
+      render();
+    }
+
+    function showAdminDialog(message = '') {
+      $('dialog-error').textContent = message;
+      $('admin-dialog').showModal();
+      $('admin-user').focus();
+    }
+
+    async function requestAdmin(action) {
+      if (state.canManage) {
+        await action();
+        return;
+      }
+      state.pendingAction = action;
+      showAdminDialog();
+    }
+
+    function showIncomingTask(task) {
+      state.highlightId = task.id;
+      const sender = task.from_name || `+${task.from_number}`;
+      $('new-task-banner').textContent = `Nueva tarea de ${sender}`;
+      $('new-task-banner').classList.remove('d-none');
+      window.clearTimeout(bannerTimer);
+      bannerTimer = window.setTimeout(() => $('new-task-banner').classList.add('d-none'), 12000);
+      if (tvMode) window.scrollTo({ top: 0, behavior: 'smooth' });
+      loadTasks();
+    }
 
     function ago(timestamp) {
       const seconds = Math.round((timestamp - Date.now()) / 1000);
@@ -284,27 +504,28 @@
       $('pending-count').textContent = state.counts.pending ?? 0;
       $('today-count').textContent = state.counts.today ?? 0;
       $('done-count').textContent = state.counts.done ?? 0;
-      $('pending-foot').textContent = state.counts.pending === 1 ? 'Tarea pendiente' : 'Tareas pendientes';
       const query = state.query.toLocaleLowerCase('es');
       const items = state.tasks.filter((task) => !query
         || task.body.toLocaleLowerCase('es').includes(query)
         || (task.from_name || '').toLocaleLowerCase('es').includes(query)
         || task.from_number.includes(query));
+      const highlightId = state.highlightId;
+      state.highlightId = null;
       $('result-count').textContent = `${items.length} ${items.length === 1 ? 'tarea' : 'tareas'}`;
       const list = $('task-list');
       list.replaceChildren();
       if (items.length === 0) {
         const empty = document.createElement('li');
-        empty.className = 'empty';
+        empty.className = 'text-center py-5';
         const icon = document.createElement('span');
         icon.className = 'empty-icon';
         icon.setAttribute('aria-hidden', 'true');
         icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4.5 4.5L19 7"/><circle cx="12" cy="12" r="10"/></svg>';
         const title = document.createElement('p');
-        title.className = 'empty-title';
+        title.className = 'fw-semibold mb-1';
         title.textContent = state.query ? 'No encontramos coincidencias' : state.status === 'done' ? 'Aún no hay tareas hechas' : 'Todo al día';
         const copy = document.createElement('p');
-        copy.className = 'empty-copy';
+        copy.className = 'text-muted-app small mb-0';
         copy.textContent = state.query ? 'Prueba con otra búsqueda.' : state.status === 'done' ? 'Cuando completes una tarea, aparecerá aquí.' : 'Las nuevas tareas de WhatsApp aparecerán aquí.';
         empty.append(icon, title, copy);
         list.append(empty);
@@ -314,11 +535,13 @@
       for (const task of items) {
         const item = $('task-template').content.firstElementChild.cloneNode(true);
         item.classList.toggle('is-done', Boolean(task.done));
+        item.classList.toggle('is-new', task.id === highlightId);
         const toggle = item.querySelector('.task-check');
+        toggle.hidden = tvMode || !state.canManage;
         toggle.setAttribute('aria-pressed', String(Boolean(task.done)));
         toggle.setAttribute('aria-label', task.done ? 'Volver a pendiente' : 'Marcar como hecha');
         toggle.title = task.done ? 'Volver a pendiente' : 'Marcar como hecha';
-        toggle.addEventListener('click', () => updateTask(task, !task.done));
+        toggle.addEventListener('click', () => requestAdmin(() => updateTask(task, !task.done)));
 
         const sender = item.querySelector('.task-sender');
         sender.textContent = task.from_name || `+${task.from_number}`;
@@ -332,15 +555,17 @@
 
         const badge = item.querySelector('.badge');
         badge.textContent = task.done ? 'Hecha' : 'Pendiente';
-        badge.classList.toggle('done', Boolean(task.done));
+        badge.classList.toggle('text-bg-success', Boolean(task.done));
+        badge.classList.toggle('text-bg-warning', !task.done);
         const note = item.querySelector('.task-note');
         const remove = item.querySelector('.delete');
-        remove.hidden = !task.done;
-        remove.addEventListener('click', () => deleteTask(task));
+        remove.hidden = !task.done || tvMode || !state.canManage;
+        remove.addEventListener('click', () => requestAdmin(() => deleteTask(task)));
         if (task.done) {
           note.textContent = `Completada ${ago(task.done_at)}${task.done_by ? ` por ${task.done_by}` : ''}`;
         } else if (Date.now() - task.received_at > 86400000) {
           badge.textContent = 'Pendiente · +1 día';
+          badge.classList.replace('text-bg-warning', 'text-bg-secondary');
         }
         item.dataset.id = task.id;
         list.append(item);
@@ -350,12 +575,12 @@
     function showError(message) {
       const alert = $('alert');
       alert.textContent = message;
-      alert.classList.toggle('show', Boolean(message));
+      alert.classList.toggle('d-none', !message);
     }
 
     async function loadTasks() {
       try {
-        const response = await fetch(`/api/tasks?status=${encodeURIComponent(state.status)}`);
+        const response = await fetch(`/api/tasks?status=${encodeURIComponent(state.status)}`, { headers: apiHeaders() });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
         state.tasks = data.tasks;
@@ -371,9 +596,16 @@
       try {
         const response = await fetch(`/api/tasks/${task.id}`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          headers: apiHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({ done }),
         });
+        if (response.status === 401) {
+          state.canManage = false;
+          render();
+          state.pendingAction = () => updateTask(task, done);
+          showAdminDialog('La sesión ha caducado. Inicia sesión para continuar.');
+          return;
+        }
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         await loadTasks();
       } catch {
@@ -384,7 +616,14 @@
     async function deleteTask(task) {
       if (!window.confirm(`¿Eliminar la tarea #${task.id}? Esta acción no se puede deshacer.`)) return;
       try {
-        const response = await fetch(`/api/tasks/${task.id}`, { method: 'DELETE' });
+        const response = await fetch(`/api/tasks/${task.id}`, { method: 'DELETE', headers: apiHeaders() });
+        if (response.status === 401) {
+          state.canManage = false;
+          render();
+          state.pendingAction = () => deleteTask(task);
+          showAdminDialog('La sesión ha caducado. Inicia sesión para continuar.');
+          return;
+        }
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         await loadTasks();
       } catch {
@@ -396,6 +635,7 @@
       button.addEventListener('click', () => {
         state.status = button.dataset.status;
         document.querySelectorAll('.filter').forEach((filter) => {
+          filter.classList.toggle('active', filter === button);
           filter.setAttribute('aria-pressed', String(filter === button));
         });
         loadTasks();
@@ -406,7 +646,53 @@
       render();
     });
     $('refresh').addEventListener('click', loadTasks);
+    $('admin-action').addEventListener('click', () => showAdminDialog());
+    $('logout-action').addEventListener('click', () => {
+      state.authToken = '';
+      state.canManage = false;
+      try { sessionStorage.removeItem('task-dashboard-auth'); } catch {}
+      refreshSession();
+    });
+    $('dialog-cancel').addEventListener('click', () => {
+      state.pendingAction = null;
+      $('admin-dialog').close();
+    });
+    $('admin-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const username = $('admin-user').value;
+      const password = $('admin-password').value;
+      const credentialBytes = new TextEncoder().encode(`${username}:${password}`);
+      let credentialBinary = '';
+      credentialBytes.forEach((byte) => { credentialBinary += String.fromCharCode(byte); });
+      state.authToken = `Basic ${btoa(credentialBinary)}`;
+      try {
+        const response = await fetch('/api/session', { headers: apiHeaders() });
+        const session = response.ok ? await response.json() : { can_manage: false };
+        if (!session.can_manage) {
+          state.authToken = '';
+          $('dialog-error').textContent = 'Usuario o contraseña incorrectos.';
+          return;
+        }
+        try { sessionStorage.setItem('task-dashboard-auth', state.authToken); } catch {}
+        state.canManage = true;
+        $('admin-form').reset();
+        $('admin-dialog').close();
+        $('admin-action').hidden = true;
+        $('logout-action').hidden = tvMode;
+        render();
+        const pendingAction = state.pendingAction;
+        state.pendingAction = null;
+        if (pendingAction) await pendingAction();
+      } catch {
+        state.authToken = '';
+        $('dialog-error').textContent = 'No se pudo validar el acceso. Comprueba la conexión e inténtalo otra vez.';
+      }
+    });
     setInterval(render, 60000);
+    setInterval(loadTasks, 30000);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') loadTasks();
+    });
 
     const events = new EventSource('/api/events');
     events.onopen = () => {
@@ -416,11 +702,19 @@
     };
     events.onerror = () => {
       $('connection').classList.remove('on');
-      $('connection-label').textContent = 'Reconectando';
+      $('connection-label').textContent = tvMode ? 'Reconectando · reintento automático' : 'Reconectando';
     };
-    for (const eventName of ['task:new', 'task:update', 'task:delete']) {
-      events.addEventListener(eventName, loadTasks);
-    }
+    events.addEventListener('task:new', (event) => {
+      try {
+        showIncomingTask(JSON.parse(event.data));
+      } catch {
+        loadTasks();
+      }
+    });
+    events.addEventListener('task:update', loadTasks);
+    events.addEventListener('task:delete', loadTasks);
+
+    refreshSession().catch(() => showError('No se pudo comprobar el acceso de administrador.'));
     loadTasks();
   </script>
 </body>
