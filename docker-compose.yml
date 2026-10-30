@@ -12,19 +12,14 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Configura MYSQL_PASSWORD en .env}
       DEV_LIVE_RELOAD: ${DEV_LIVE_RELOAD:-true}
     volumes:
-      - ./php:/var/www/html:ro
+      - ./php:/var/www/html
+      - /var/www/html/vendor  # <-- Preserva la carpeta vendor generada en el Dockerfile
       - ./public:/opt/whatsapp-tareas/public:ro
     ports:
       - "${HOST_BIND:-0.0.0.0}:${HOST_PORT:-8080}:80"
     depends_on:
       db:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "php -r \"exit(@file_get_contents('http://127.0.0.1/health') === false ? 1 : 0);\""]
-      interval: 30s
-      timeout: 5s
-      start_period: 15s
-      retries: 3
 
   webhook:
     build: .
@@ -40,18 +35,37 @@ services:
       WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:?Configura WHATSAPP_VERIFY_TOKEN en .env}
       WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET:-}
     volumes:
-      - ./php:/var/www/html:ro
+      - ./php:/var/www/html
+      - /var/www/html/vendor  # <-- Preserva la carpeta vendor generada en el Dockerfile
     ports:
       - "${WEBHOOK_HOST_BIND:-127.0.0.1}:${WEBHOOK_HOST_PORT:-8081}:80"
     depends_on:
       db:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "php -r \"exit(@file_get_contents('http://127.0.0.1/health') === false ? 1 : 0);\""]
-      interval: 30s
-      timeout: 5s
-      start_period: 15s
-      retries: 3
+
+  email-worker:
+    build: .
+    image: whatsapp-tareas:latest
+    restart: unless-stopped
+    environment:
+      APP_MODE: email_worker
+      DB_HOST: db
+      DB_PORT: 3306
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-whatsapp_tasks}
+      MYSQL_USER: ${MYSQL_USER:-whatsapp_app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Configura MYSQL_PASSWORD en .env}
+      GMAIL_USER: ${GMAIL_USER:?Configura GMAIL_USER en .env}
+      GMAIL_PASS: ${GMAIL_PASS:?Configura GMAIL_PASS en .env}
+      EXCLUDED_SENDERS: ${EXCLUDED_SENDERS:-}
+      ALLOWED_RECIPIENTS: ${ALLOWED_RECIPIENTS:-}
+    volumes:
+      - ./php:/var/www/html
+      - /var/www/html/vendor  # <-- Preserva la carpeta vendor generada en el Dockerfile
+    command: >
+      sh -c "while true; do php -f /var/www/html/fetch_emails.php; echo ''; sleep 60; done"
+    depends_on:
+      db:
+        condition: service_healthy
 
   phpmyadmin:
     image: phpmyadmin:5.2.3-apache

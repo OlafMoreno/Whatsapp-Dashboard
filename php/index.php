@@ -41,6 +41,7 @@ if ($path === '/api/dev-version' && $method === 'GET') {
     }
     $files = [];
     foreach ([__DIR__, '/opt/whatsapp-tareas/public'] as $directory) {
+        if (!is_dir($directory)) continue;
         $iterator = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($directory, FilesystemIterator::SKIP_DOTS)
         );
@@ -106,10 +107,12 @@ try {
 function normalizeTask(array $task): array
 {
     foreach (['id', 'done'] as $field) {
-        $task[$field] = (int) $task[$field];
+        if (isset($task[$field])) {
+            $task[$field] = (int) $task[$field];
+        }
     }
     foreach (['received_at', 'done_at'] as $field) {
-        if ($task[$field] !== null) {
+        if (!empty($task[$field])) {
             $date = new DateTimeImmutable($task[$field], new DateTimeZone('UTC'));
             $task[$field] = (int) $date->format('U') * 1000 + (int) $date->format('v');
         }
@@ -128,15 +131,16 @@ function databaseDateFromMilliseconds(int $milliseconds): string
 function publishEvent(PDO $db, string $name, array $data): void
 {
     $insert = $db->prepare('INSERT INTO task_events (name, data, created_at) VALUES (?, ?, ?)');
+    $nowMs = (int) floor(microtime(true) * 1000);
     $insert->execute([
         $name,
         json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
-        (int) floor(microtime(true) * 1000),
+        $nowMs,
     ]);
 
     $eventId = (int) $db->lastInsertId();
     if ($eventId % 100 === 0) {
-        $db->exec('DELETE FROM task_events WHERE created_at < ' . ((int) floor(microtime(true) * 1000) - 604800000));
+        $db->exec('DELETE FROM task_events WHERE created_at < ' . ($nowMs - 604800000));
         $db->exec('DELETE FROM task_events WHERE id <= ' . max(0, $eventId - 20000));
     }
 }
@@ -223,10 +227,13 @@ function webhook(PDO $db, array $config, string $method): never
 
     try {
         $db->beginTransaction();
+        
+        // Se añade 'source' con valor por defecto 'whatsapp' para alinearlo al nuevo esquema
         $insert = $db->prepare(
-            'INSERT IGNORE INTO tasks (wa_message_id, from_number, from_name, type, body, received_at)
-             VALUES (?, ?, ?, ?, ?, ?)'
+            'INSERT IGNORE INTO tasks (source, wa_message_id, from_number, from_name, type, body, received_at)
+             VALUES (\'whatsapp\', ?, ?, ?, ?, ?, ?)'
         );
+
         foreach ($payload['entry'] ?? [] as $entry) {
             foreach ($entry['changes'] ?? [] as $change) {
                 $value = $change['value'] ?? [];
@@ -243,21 +250,23 @@ function webhook(PDO $db, array $config, string $method): never
                         }
                     }
                     $timestamp = filter_var($message['timestamp'] ?? null, FILTER_VALIDATE_INT);
+                    $msTimestamp = ($timestamp !== false && $timestamp > 0)
+                        ? ($timestamp * 1000)
+                        : (int) floor(microtime(true) * 1000);
+
                     $insert->execute([
                         (string) $message['id'],
                         $from,
                         $fromName,
                         (string) $message['type'],
                         messageBody($message),
-                        databaseDateFromMilliseconds(
-                            $timestamp !== false && $timestamp > 0
-                                ? $timestamp * 1000
-                                : (int) floor(microtime(true) * 1000)
-                        ),
+                        databaseDateFromMilliseconds($msTimestamp),
                     ]);
+
                     if ($insert->rowCount() === 0) {
                         continue;
                     }
+
                     $taskId = (int) $db->lastInsertId();
                     $select = $db->prepare('SELECT * FROM tasks WHERE id = ?');
                     $select->execute([$taskId]);
@@ -290,7 +299,11 @@ if ($path === '/webhook') {
 
 if ($path === '/' || $path === '/index.php') {
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-    readfile('/opt/whatsapp-tareas/public/index.html');
+    if (is_file('/opt/whatsapp-tareas/public/index.html')) {
+        readfile('/opt/whatsapp-tareas/public/index.html');
+    } else {
+        echo 'Dashboard online';
+    }
     exit;
 }
 

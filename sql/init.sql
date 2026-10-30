@@ -1,9 +1,16 @@
 CREATE TABLE IF NOT EXISTS tasks (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    source ENUM('whatsapp', 'email') NOT NULL DEFAULT 'whatsapp',
+    
     wa_message_id VARCHAR(191) NULL,
-    from_number VARCHAR(32) NOT NULL,
+    from_number VARCHAR(32) NULL,
     from_name VARCHAR(191) NULL,
-    type VARCHAR(32) NOT NULL,
+    
+    email_message_id VARCHAR(191) NULL,
+    sender_email VARCHAR(191) NULL,
+    subject VARCHAR(255) NULL,
+    
+    type VARCHAR(32) NOT NULL DEFAULT 'text', -- 'text', 'image', 'email', etc.
     body TEXT NOT NULL,
     received_at DATETIME(3) NOT NULL,
     done TINYINT(1) NOT NULL DEFAULT 0,
@@ -11,6 +18,8 @@ CREATE TABLE IF NOT EXISTS tasks (
     done_by VARCHAR(191) NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uq_tasks_wa_message_id (wa_message_id),
+    UNIQUE KEY uq_tasks_email_message_id (email_message_id),
+    KEY idx_tasks_source (source),
     KEY idx_tasks_status_received (done, received_at),
     KEY idx_tasks_received_at (received_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
