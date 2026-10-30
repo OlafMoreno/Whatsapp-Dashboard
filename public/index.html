@@ -67,10 +67,6 @@
       box-shadow: 0 0 0 3px rgba(45, 25, 135, 0.14);
     }
 
-    .stat-card {
-      min-height: 132px;
-    }
-
     .stat-card-primary {
       border: 0;
       background: var(--app-green);
@@ -211,6 +207,11 @@
       display: none !important;
     }
 
+    .tv-display-inline {
+      display: inline-flex !important;
+      flex-direction: row !important;
+    }
+
     body.tv .dashboard-shell {
       max-width: 1800px;
     }
@@ -219,16 +220,12 @@
       display: none !important;
     }
 
-    body.tv .tv-stat {
-      min-height: 100px;
-    }
-
     body.tv .tv-stat .display-5 {
       font-size: 2rem;
     }
 
     body.tv .tv-task-list {
-      max-height: calc(100vh - 360px);
+      max-height: calc(100vh - 20px);
       overflow-y: auto;
     }
 
@@ -240,10 +237,6 @@
       .task-list {
         padding-right: 1rem;
         padding-left: 1rem;
-      }
-
-      .stat-card {
-        min-height: 110px;
       }
 
       body.tv .tv-task-list {
@@ -272,6 +265,9 @@
         </div>
       </div>
       <div class="d-flex flex-wrap align-items-center justify-content-end gap-2">
+        <span class="badge text-bg-light border px-3 py-2 tv-hide" id="user-badge" style="display:none;">
+          👤 <strong id="user-name">...</strong>
+        </span>
         <div class="connection badge rounded-pill text-bg-light border d-inline-flex align-items-center gap-2 px-3 py-2" id="connection">
           <span class="connection-dot"></span>
           <span id="connection-label">Conectando</span>
@@ -279,6 +275,7 @@
         <button class="btn btn-outline-secondary btn-sm rounded-pill" id="sound-toggle" type="button" aria-pressed="false">Activar sonido</button>
         <span class="visually-hidden" id="sound-status" aria-live="polite"></span>
         <a class="btn btn-success btn-sm rounded-pill tv-hide" id="display-link" href="/?tv=1">Pantalla TV</a>
+        <button class="btn btn-outline-danger btn-sm rounded-pill tv-hide" id="logout-btn" type="button">Salir</button>
       </div>
     </header>
 
@@ -286,35 +283,35 @@
       <h1 class="display-6 fw-bold mb-2">Tareas</h1>
     </section>
 
-    <section class="row row-cols-1 row-cols-sm-3 g-3 mb-4 tv-summary" aria-label="Resumen de tareas">
+    <section class="row row-cols-1 row-cols-sm-3 g-2 mb-2 tv-summary" aria-label="Resumen de tareas">
       <div class="col">
-        <article class="card stat-card tv-stat stat-card-primary shadow-sm h-100">
-          <div class="card-body d-flex flex-column justify-content-between">
+        <article class="card stat-card tv-stat stat-card-primary shadow-sm">
+          <div class="card-body d-flex align-items-center justify-content-around p-2 px-3">
             <span class="text-muted-app small fw-semibold">Por hacer</span>
-            <strong class="display-5 fw-bold lh-1" id="pending-count">—</strong>
+            <strong class="fs-4 fw-bold mb-0" id="pending-count">—</strong>
           </div>
         </article>
       </div>
       <div class="col">
-        <article class="card stat-card tv-stat border-0 shadow-sm h-100">
-          <div class="card-body d-flex flex-column justify-content-between">
+        <article class="card stat-card tv-stat border-0 shadow-sm">
+          <div class="card-body d-flex align-items-center justify-content-around p-2 px-3">
             <span class="text-muted-app small fw-semibold">Recibidas hoy</span>
-            <strong class="display-5 fw-bold lh-1" id="today-count">—</strong>
+            <strong class="fs-4 fw-bold mb-0" id="today-count">—</strong>
           </div>
         </article>
       </div>
       <div class="col">
-        <article class="card stat-card tv-stat border-0 shadow-sm h-100">
-          <div class="card-body d-flex flex-column justify-content-between">
+        <article class="card stat-card tv-stat border-0 shadow-sm">
+          <div class="card-body d-flex align-items-center justify-content-around p-2 px-3">
             <span class="text-muted-app small fw-semibold">Completadas</span>
-            <strong class="display-5 fw-bold lh-1" id="done-count">—</strong>
+            <strong class="fs-4 fw-bold mb-0" id="done-count">—</strong>
           </div>
         </article>
       </div>
     </section>
 
     <section class="card border-0 shadow-sm" aria-labelledby="list-title">
-      <div class="card-body p-3 p-lg-4">
+      <div class="tv-hide card-body p-3 p-lg-4">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
           <h2 class="h4 fw-bold mb-0" id="list-title">Bandeja de tareas</h2>
           <span class="small text-muted-app" id="result-count"></span>
@@ -343,7 +340,7 @@
       <ul class="task-list tv-task-list" id="task-list" aria-live="polite"></ul>
     </section>
 
-    <p class="small text-center text-muted-app mt-3 mb-0">Los cambios se sincronizan automáticamente para todo el equipo.</p>
+    <p class="tv-hide small text-center text-muted-app mt-3 mb-0">Los cambios se sincronizan automáticamente para todo el equipo.</p>
   </main>
 
   <div class="alert alert-success new-task-banner position-fixed shadow d-none" id="new-task-banner" role="status" aria-live="polite"></div>
@@ -371,6 +368,7 @@
 
   <script>
     const state = {
+      user: null,
       status: 'pending',
       tasks: [],
       counts: { pending: 0, done: 0, today: 0 },
@@ -382,9 +380,25 @@
     const $ = (id) => document.getElementById(id);
     const tvMode = new URLSearchParams(location.search).get('tv') === '1';
     document.body.classList.toggle('tv', tvMode);
-    const timeFormat = new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium', timeStyle: 'short' });
-    const relativeFormat = new Intl.RelativeTimeFormat('es', { numeric: 'auto' });
     let bannerTimer = 0;
+
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/me');
+        if (!res.ok) throw new Error('No auth');
+        const data = await res.json();
+        state.user = data.user;
+        $('user-name').textContent = state.user.name;
+        $('user-badge').style.display = 'inline-block';
+      } catch {
+        window.location.href = '/login.html';
+      }
+    }
+
+    async function logout() {
+      await fetch('/api/logout', { method: 'POST' });
+      window.location.href = '/login.html';
+    }
 
     function updateSoundControl() {
       $('sound-toggle').textContent = state.soundEnabled ? 'Silenciar sonido' : 'Activar sonido';
@@ -419,7 +433,7 @@
 
     function showIncomingTask(task) {
       state.highlightId = task.id;
-      const sender = task.from_name || `+${task.from_number}`;
+      const sender = task.from_name || (task.from_number ? `+${task.from_number}` : task.sender_email || 'Desconocido');
       $('new-task-banner').textContent = `Nueva tarea de ${sender}`;
       $('new-task-banner').classList.remove('d-none');
       window.clearTimeout(bannerTimer);
@@ -429,21 +443,16 @@
     }
 
     function ago(date) {
-        const timestamp = typeof date === 'number' ? date : new Date(date).getTime();
-        const seconds = Math.floor((Date.now() - timestamp) / 1000);
-        
-        // Si la diferencia es menor a 0 (ej. servidor con reloj ligeramente adelantado)
-        if (seconds < 0) return 'hace un momento';
-        if (seconds < 60) return 'hace un momento';
-        
-        const minutes = Math.floor(seconds / 60);
-        if (minutes < 60) return `hace ${minutes} min`;
-        
-        const hours = Math.floor(minutes / 60);
-        if (hours < 24) return `hace ${hours} h`;
-        
-        return new Date(timestamp).toLocaleDateString();
+      const timestamp = typeof date === 'number' ? date : new Date(date).getTime();
+      const seconds = Math.floor((Date.now() - timestamp) / 1000);
+      if (seconds < 0 || seconds < 60) return 'hace un momento';
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return `hace ${minutes} min`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `hace ${hours} h`;
+      return new Date(timestamp).toLocaleDateString();
     }
+
     function safeLinks(element, text) {
       element.textContent = '';
       text.split(/(https?:\/\/[^\s]+)/g).forEach((part, index) => {
@@ -474,12 +483,14 @@
       const items = state.tasks.filter((task) => !query
         || task.body.toLocaleLowerCase('es').includes(query)
         || (task.from_name || '').toLocaleLowerCase('es').includes(query)
-        || task.from_number.includes(query));
+        || (task.from_number || '').includes(query)
+        || (task.sender_email || '').toLocaleLowerCase('es').includes(query));
       const highlightId = state.highlightId;
       state.highlightId = null;
       $('result-count').textContent = `${items.length} ${items.length === 1 ? 'tarea' : 'tareas'}`;
       const list = $('task-list');
       list.replaceChildren();
+
       if (items.length === 0) {
         const empty = document.createElement('li');
         empty.className = 'text-center py-5';
@@ -502,66 +513,53 @@
         const item = $('task-template').content.firstElementChild.cloneNode(true);
         item.classList.toggle('is-done', Boolean(task.done));
         item.classList.toggle('is-new', task.id === highlightId);
+
         const toggle = item.querySelector('.task-check');
         toggle.hidden = tvMode;
         toggle.setAttribute('aria-pressed', String(Boolean(task.done)));
         toggle.setAttribute('aria-label', task.done ? 'Volver a pendiente' : 'Marcar como hecha');
         toggle.title = task.done ? 'Volver a pendiente' : 'Marcar como hecha';
-        toggle.addEventListener('click', () => {
-          updateTask(task, !Boolean(task.done));
-        });
+        toggle.addEventListener('click', () => updateTask(task, !Boolean(task.done)));
 
         const sender = item.querySelector('.task-sender');
-        sender.textContent = task.from_name || `+${task.from_number}`;
-        sender.title = `+${task.from_number}`;
+        sender.textContent = task.from_name || (task.from_number ? `+${task.from_number}` : task.sender_email || 'Desconocido');
+        sender.title = task.from_number ? `+${task.from_number}` : task.sender_email || '';
         item.querySelector('.task-id').textContent = `#${task.id}`;
+
+        const rawTimestamp = task.received_at;
+        const timezoneOffsetMs = new Date(rawTimestamp).getTimezoneOffset() * 60 * 1000;
+        const dateObj = new Date(rawTimestamp + timezoneOffsetMs);
+
         const timeFormat = new Intl.DateTimeFormat(navigator.language, {
           dateStyle: 'short',
           timeStyle: 'medium',
-          timeZone: 'UTC' // <--- Mantiene las 15:02:39 sin sumar tu zona local
+          timeZone: 'UTC'
         });
 
-        // Convertir timestamp a objeto Date
-        // Capturar el timestamp del servidor (1793286159000)
-const rawTimestamp = task.received_at;
-
-// Convertir los minutos de desfase local del navegador a milisegundos
-const timezoneOffsetMs = new Date(rawTimestamp).getTimezoneOffset() * 60 * 1000;
-
-// Ajustar el timestamp restando el desfase guardado por error
-const dateObj = new Date(rawTimestamp + timezoneOffsetMs);
-
         const received = item.querySelector('.task-time');
-
-        // 1. "hace 20 min"
         received.textContent = ago(dateObj);
-        // 2. "2026-10-29T15:02:39.000Z"
         received.dateTime = dateObj.toISOString(); 
-
-        // 3. Muestra "29/10/2026, 16:02:39" (en hora local CET/CEST de España)
         received.title = timeFormat.format(dateObj);
-        /*
-        const received = item.querySelector('.task-time');
-        received.textContent = ago(task.received_at);
-        received.dateTime = new Date(task.received_at).toISOString();
-        received.title = timeFormat.format(task.received_at);
-        */
+
         safeLinks(item.querySelector('.task-body'), task.body);
 
         const badge = item.querySelector('.badge');
         badge.textContent = task.done ? 'Hecha' : 'Pendiente';
         badge.classList.toggle('text-bg-success', Boolean(task.done));
         badge.classList.toggle('text-bg-warning', !task.done);
+
         const note = item.querySelector('.task-note');
         const remove = item.querySelector('.delete');
         remove.hidden = !task.done || tvMode;
         remove.addEventListener('click', () => deleteTask(task));
+
         if (task.done) {
           note.textContent = `Completada ${ago(task.done_at)}${task.done_by ? ` por ${task.done_by}` : ''}`;
         } else if (Date.now() - task.received_at > 86400000) {
           badge.textContent = 'Pendiente · +1 día';
           badge.classList.replace('text-bg-warning', 'text-bg-secondary');
         }
+
         item.dataset.id = task.id;
         list.append(item);
       }
@@ -576,6 +574,10 @@ const dateObj = new Date(rawTimestamp + timezoneOffsetMs);
     async function loadTasks() {
       try {
         const response = await fetch(`/api/tasks?status=${encodeURIComponent(state.status)}`);
+        if (response.status === 401) {
+          window.location.href = '/login.html';
+          return;
+        }
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
         state.tasks = data.tasks;
@@ -594,6 +596,10 @@ const dateObj = new Date(rawTimestamp + timezoneOffsetMs);
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ done }),
         });
+        if (response.status === 401) {
+          window.location.href = '/login.html';
+          return;
+        }
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         await loadTasks();
       } catch {
@@ -605,12 +611,18 @@ const dateObj = new Date(rawTimestamp + timezoneOffsetMs);
       if (!window.confirm(`¿Eliminar la tarea #${task.id}? Esta acción no se puede deshacer.`)) return;
       try {
         const response = await fetch(`/api/tasks/${task.id}`, { method: 'DELETE' });
+        if (response.status === 401) {
+          window.location.href = '/login.html';
+          return;
+        }
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         await loadTasks();
       } catch {
         showError('No se pudo eliminar la tarea. Inténtalo otra vez.');
       }
     }
+
+    $('logout-btn').addEventListener('click', logout);
 
     document.querySelectorAll('.filter').forEach((button) => {
       button.addEventListener('click', () => {
@@ -622,11 +634,14 @@ const dateObj = new Date(rawTimestamp + timezoneOffsetMs);
         loadTasks();
       });
     });
+
     $('search').addEventListener('input', (event) => {
       state.query = event.target.value.trim();
       render();
     });
+
     $('refresh').addEventListener('click', loadTasks);
+
     $('sound-toggle').addEventListener('click', async () => {
       if (state.soundEnabled) {
         state.soundEnabled = false;
@@ -651,8 +666,10 @@ const dateObj = new Date(rawTimestamp + timezoneOffsetMs);
         $('sound-status').textContent = 'No se pudo activar el audio en este navegador.';
       }
     });
+
     setInterval(render, 60000);
-    setInterval(loadTasks, 30000);
+    setInterval(loadTasks, 60000);
+
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') loadTasks();
     });
@@ -663,10 +680,12 @@ const dateObj = new Date(rawTimestamp + timezoneOffsetMs);
       $('connection-label').textContent = 'En directo';
       loadTasks();
     };
+
     events.onerror = () => {
       $('connection').classList.remove('on');
       $('connection-label').textContent = tvMode ? 'Reconectando · reintento automático' : 'Reconectando';
     };
+
     events.addEventListener('task:new', (event) => {
       try {
         playTaskSound();
@@ -675,10 +694,11 @@ const dateObj = new Date(rawTimestamp + timezoneOffsetMs);
         loadTasks();
       }
     });
+
     events.addEventListener('task:update', loadTasks);
     events.addEventListener('task:delete', loadTasks);
 
-    loadTasks();
+    checkAuth().then(loadTasks);
   </script>
 </body>
 </html>

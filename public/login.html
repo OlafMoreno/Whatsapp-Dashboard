@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#4929d8">
+  <title>Acceso - Tareas</title>
+  <link rel="stylesheet" href="/assets/bootstrap.min.css">
+  <style>
+    :root {
+      --app-green: #4929d8;
+      --app-green-dark: #10006b;
+    }
+
+    body {
+      min-height: 100vh;
+      background: #f4f7f5;
+      color: #17241d;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 400px;
+      border: 0;
+      border-radius: 18px;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 52px;
+      height: 52px;
+      place-items: center;
+      border-radius: 16px;
+      background: var(--app-green);
+      color: #fff;
+      margin: 0 auto 1.25rem;
+    }
+
+    .brand-mark svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .btn-primary {
+      background: var(--app-green);
+      border-color: var(--app-green);
+      border-radius: 10px;
+      padding: 0.6rem 1rem;
+      font-weight: 600;
+    }
+
+    .btn-primary:hover {
+      background: var(--app-green-dark);
+      border-color: var(--app-green-dark);
+    }
+
+    .form-control {
+      border-radius: 10px;
+      padding: 0.6rem 0.85rem;
+    }
+
+    .form-control:focus {
+      border-color: var(--app-green);
+      box-shadow: 0 0 0 0.25rem rgba(73, 41, 216, 0.25);
+    }
+  </style>
+</head>
+<body>
+  <main class="card login-card shadow-sm">
+    <div class="card-body p-4 p-sm-5">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 11.5a7.5 7.5 0 0 1-11.2 6.5L4 19l1.1-4.1A7.5 7.5 0 1 1 20 11.5Z"/>
+          <path d="m8.8 11.8 2 2 4.3-4.5"/>
+        </svg>
+      </div>
+      <h1 class="h4 fw-bold text-center mb-1">Iniciar sesión</h1>
+      <p class="text-center text-muted small mb-4">Accede con tu usuario para gestionar las tareas</p>
+
+      <div id="alert-error" class="alert alert-danger py-2 small d-none" role="alert"></div>
+
+      <form id="login-form">
+        <div class="mb-3">
+          <label for="username" class="form-label small fw-semibold">Usuario</label>
+          <input type="text" id="username" class="form-control" required autofocus autocomplete="username">
+        </div>
+        <div class="mb-4">
+          <label for="password" class="form-label small fw-semibold">Contraseña</label>
+          <input type="password" id="password" class="form-control" required autocomplete="current-password">
+        </div>
+        <button type="submit" id="btn-submit" class="btn btn-primary w-100">Entrar</button>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const alert = document.getElementById('alert-error');
+      const submitBtn = document.getElementById('btn-submit');
+
+      alert.classList.add('d-none');
+      submitBtn.disabled = true;
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: document.getElementById('username').value.trim(),
+            password: document.getElementById('password').value
+          })
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.ok) {
+          window.location.href = '/';
+        } else {
+          alert.textContent = data.error || 'Credenciales incorrectas';
+          alert.classList.remove('d-none');
+        }
+      } catch {
+        alert.textContent = 'Error al conectar con el servidor. Inténtalo de nuevo.';
+        alert.classList.remove('d-none');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

@@ -145,8 +145,10 @@ try {
         $mailTimestamp = $mail->date ? strtotime($mail->date) : time();
 
         // 1. Filtro de tiempo
+        logMsg("    Fecha del correo: " . date('Y-m-d H:i:s', $mailTimestamp));
+        logMsg("    Fecha límite: " . date('Y-m-d H:i:s', $limitTimestamp));
         if ($mailTimestamp < $limitTimestamp) {
-            logMsg("    ⏭️ Ignorado: Fuera del rango de 1 hora.");
+            logMsg("    ⏭️ Ignorado: Fuera del rango de hora.");
             $skippedOldCount++;
             continue;
         }
@@ -227,22 +229,22 @@ try {
                 ':body'         => trim($subject),
                 ':received_at'  => $receivedAtStr
             ]);
-        }
+            
+            if ($stmt->rowCount() > 0) {
+                $taskId = (int) $pdo->lastInsertId();
+                logMsg("    ✨ ¡NUEVA TAREA CREADA! ID: #{$taskId}");
 
-        if ($stmt->rowCount() > 0) {
-            $taskId = (int) $pdo->lastInsertId();
-            logMsg("    ✨ ¡NUEVA TAREA CREADA! ID: #{$taskId}");
+                $select = $pdo->prepare('SELECT * FROM tasks WHERE id = ?');
+                $select->execute([$taskId]);
+                $task = normalizeTask($select->fetch());
 
-            $select = $pdo->prepare('SELECT * FROM tasks WHERE id = ?');
-            $select->execute([$taskId]);
-            $task = normalizeTask($select->fetch());
-
-            publishEvent($pdo, 'task:new', $task);
-            logMsg("    📢 Evento 'task:new' enviado al Dashboard.");
-            $insertedCount++;
-        } else {
-            logMsg("    🔁 Ignorado: Correo duplicado en la BD.");
-            $skippedDuplicateCount++;
+                publishEvent($pdo, 'task:new', $task);
+                logMsg("    📢 Evento 'task:new' enviado al Dashboard.");
+                $insertedCount++;
+            } else {
+                logMsg("    🔁 Ignorado: Correo duplicado en la BD.");
+                $skippedDuplicateCount++;
+            }
         }
     }
 

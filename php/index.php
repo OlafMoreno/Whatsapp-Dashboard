@@ -1,6 +1,10 @@
 <?php
 declare(strict_types=1);
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 $config = [
     'db_host' => getenv('DB_HOST') ?: 'db',
     'db_port' => getenv('DB_PORT') ?: '3306',
@@ -21,6 +25,7 @@ if (!in_array($config['app_mode'], ['dashboard', 'webhook'], true)) {
 
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+
 if (($config['app_mode'] === 'webhook' && !in_array($path, ['/health', '/webhook'], true))
     || ($config['app_mode'] === 'dashboard' && $path === '/webhook')) {
     http_response_code(404);
@@ -33,6 +38,18 @@ function jsonResponse(mixed $data, int $status = 200): never
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
     exit;
+}
+
+function requireAuth(): array
+{
+    if (empty($_SESSION['user'])) {
+        jsonResponse(['error' => 'No autorizado'], 401);
+    }
+    $user = $_SESSION['user'];
+    
+    // 🔓 Libera el bloqueo del archivo de sesión para peticiones concurrentes
+    session_write_close(); 
+    return $user;
 }
 
 if ($path === '/api/dev-version' && $method === 'GET') {
@@ -99,15 +116,13 @@ try {
 } catch (PDOException $error) {
     error_log('No se pudo conectar con MySQL: ' . $error->getMessage());
     http_response_code(503);
-    header('Content-Type: application/json; charset=utf-8');
-    echo '{"error":"Base de datos no disponible"}';
-    exit;
+    jsonResponse(['error' => 'Base de datos no disponible'], 503);
 }
 
 function normalizeTask(array $task): array
 {
-    foreach (['id', 'done'] as $field) {
-        if (isset($task[$field])) {
+    foreach (['id', 'done', 'done_by_user_id'] as $field) {
+        if (isset($task[$field]) && $task[$field] !== null) {
             $task[$field] = (int) $task[$field];
         }
     }
@@ -228,7 +243,6 @@ function webhook(PDO $db, array $config, string $method): never
     try {
         $db->beginTransaction();
         
-        // Se añade 'source' con valor por defecto 'whatsapp' para alinearlo al nuevo esquema
         $insert = $db->prepare(
             'INSERT IGNORE INTO tasks (source, wa_message_id, from_number, from_name, type, body, received_at)
              VALUES (\'whatsapp\', ?, ?, ?, ?, ?, ?)'
@@ -290,9 +304,65 @@ function webhook(PDO $db, array $config, string $method): never
     exit;
 }
 
+// ==========================================
+// ENDPOINTS DE AUTENTICACIÓN
+// ==========================================
+
+if ($path === '/api/login' && $method === 'POST') {
+    try {
+        $body = json_decode(file_get_contents('php://input'), true, 512, JSON_THROW_ON_ERROR);
+    } catch (JsonException) {
+        jsonResponse(['error' => 'Cuerpo JSON inválido'], 400);
+    }
+
+    $username = trim((string) ($body['username'] ?? ''));
+    $password = (string) ($body['password'] ?? '');
+
+    if ($username === '' || $password === '') {
+        jsonResponse(['error' => 'Nombre de usuario y contraseña requeridos'], 400);
+    }
+
+    $stmt = $db->prepare('SELECT id, username, password_hash, name FROM users WHERE username = ?');
+    $stmt->execute([$username]);
+    $user = $stmt->fetch();
+
+    if (!$user || !password_verify($password, $user['password_hash'])) {
+        jsonResponse(['error' => 'Credenciales incorrectas'], 401);
+    }
+
+    $_SESSION['user'] = [
+        'id' => (int) $user['id'],
+        'username' => $user['username'],
+        'name' => $user['name']
+    ];
+    session_write_close();
+
+    jsonResponse(['ok' => true, 'user' => $_SESSION['user']]);
+}
+
+if ($path === '/api/logout' && $method === 'POST') {
+    unset($_SESSION['user']);
+    session_destroy();
+    jsonResponse(['ok' => true]);
+}
+
+if ($path === '/api/me' && $method === 'GET') {
+    if (empty($_SESSION['user'])) {
+        jsonResponse(['authenticated' => false], 401);
+    }
+    $userData = $_SESSION['user'];
+    session_write_close();
+    jsonResponse(['authenticated' => true, 'user' => $userData]);
+}
+
+// ==========================================
+// RUTAS PRINCIPALES Y DE VISTAS
+// ==========================================
+
 if ($path === '/health' && $method === 'GET') {
     jsonResponse(['ok' => true]);
 }
+
 if ($path === '/webhook') {
     webhook($db, $config, $method);
 }
@@ -307,7 +377,23 @@ if ($path === '/' || $path === '/index.php') {
     exit;
 }
 
+if ($path === '/login' || $path === '/login.html') {
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    if (is_file('/opt/whatsapp-tareas/public/login.html')) {
+        readfile('/opt/whatsapp-tareas/public/login.html');
+    } else {
+        http_response_code(404);
+        echo 'Error: login.html no existe en /opt/whatsapp-tareas/public/';
+    }
+    exit;
+}
+
+// ==========================================
+// ENDPOINTS DE TAREAS Y EVENTOS EN DIRECTO
+// ==========================================
+
 if ($path === '/api/tasks' && $method === 'GET') {
+    requireAuth();
     $status = $_GET['status'] ?? 'pending';
     $where = match ($status) {
         'done' => 'WHERE done = 1',
@@ -316,8 +402,10 @@ if ($path === '/api/tasks' && $method === 'GET') {
     };
     $limit = filter_var($_GET['limit'] ?? 500, FILTER_VALIDATE_INT);
     $limit = max(1, min($limit === false ? 500 : $limit, 2000));
+    
     $tasks = $db->query("SELECT * FROM tasks {$where} ORDER BY received_at DESC LIMIT {$limit}")->fetchAll();
     $tasks = array_map('normalizeTask', $tasks);
+    
     $counts = $db->query(
         'SELECT
             COALESCE(SUM(done = 0), 0) AS pending,
@@ -325,6 +413,7 @@ if ($path === '/api/tasks' && $method === 'GET') {
             COALESCE(SUM(received_at >= ' . $db->quote(gmdate('Y-m-d 00:00:00')) . '), 0) AS today
          FROM tasks'
     )->fetch();
+
     jsonResponse([
         'tasks' => $tasks,
         'counts' => [
@@ -336,47 +425,51 @@ if ($path === '/api/tasks' && $method === 'GET') {
 }
 
 if (preg_match('#^/api/tasks/([1-9][0-9]*)$#', $path, $matches)) {
-    if ($method !== 'PATCH' && $method !== 'DELETE') {
-        header('Allow: PATCH, DELETE');
-        http_response_code(405);
-        exit;
-    }
+    $currentUser = requireAuth();
     $taskId = (int) $matches[1];
     $find = $db->prepare('SELECT * FROM tasks WHERE id = ?');
+
     if ($method === 'PATCH') {
         try {
             $body = json_decode(file_get_contents('php://input'), true, 512, JSON_THROW_ON_ERROR);
         } catch (JsonException) {
             jsonResponse(['error' => 'El cuerpo debe ser JSON válido'], 400);
         }
+
         if (!is_array($body) || !is_bool($body['done'] ?? null)) {
             jsonResponse(['error' => 'Envía { "done": true } o { "done": false }'], 400);
         }
+
         if ($body['done']) {
-            $update = $db->prepare('UPDATE tasks SET done = 1, done_at = ?, done_by = ? WHERE id = ?');
+            $update = $db->prepare('UPDATE tasks SET done = 1, done_at = ?, done_by = ?, done_by_user_id = ? WHERE id = ?');
             $update->execute([
                 databaseDateFromMilliseconds((int) floor(microtime(true) * 1000)),
-                'Equipo',
+                $currentUser['name'],
+                $currentUser['id'],
                 $taskId,
             ]);
         } else {
-            $update = $db->prepare('UPDATE tasks SET done = 0, done_at = NULL, done_by = NULL WHERE id = ?');
+            $update = $db->prepare('UPDATE tasks SET done = 0, done_at = NULL, done_by = NULL, done_by_user_id = NULL WHERE id = ?');
             $update->execute([$taskId]);
         }
+
         $find->execute([$taskId]);
         $taskRow = $find->fetch();
         if ($taskRow === false) {
             jsonResponse(['error' => 'La tarea no existe'], 404);
         }
+
         $task = normalizeTask($taskRow);
         publishEvent($db, 'task:update', $task);
         jsonResponse($task);
     }
+
     if ($method === 'DELETE') {
         $find->execute([$taskId]);
         if (!$find->fetch()) {
             jsonResponse(['error' => 'La tarea no existe'], 404);
         }
+
         $delete = $db->prepare('DELETE FROM tasks WHERE id = ?');
         $delete->execute([$taskId]);
         publishEvent($db, 'task:delete', ['id' => $taskId]);
@@ -386,21 +479,31 @@ if (preg_match('#^/api/tasks/([1-9][0-9]*)$#', $path, $matches)) {
 }
 
 if ($path === '/api/events' && $method === 'GET') {
+    requireAuth();
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
+    }
+
     $lastEventId = filter_var($_SERVER['HTTP_LAST_EVENT_ID'] ?? null, FILTER_VALIDATE_INT);
     $cursor = $lastEventId === false || $lastEventId === null
         ? (int) $db->query('SELECT COALESCE(MAX(id), 0) FROM task_events')->fetchColumn()
         : max(0, $lastEventId);
+
     set_time_limit(0);
     header('Content-Type: text/event-stream; charset=utf-8');
     header('Cache-Control: no-cache, no-transform');
     header('X-Accel-Buffering: no');
+
     while (ob_get_level() > 0) {
         ob_end_flush();
     }
+
     echo ": conectado\n\n";
     flush();
+
     $lastPing = time();
     $events = $db->prepare('SELECT id, name, data FROM task_events WHERE id > ? ORDER BY id LIMIT 100');
+
     while (!connection_aborted()) {
         $events->execute([$cursor]);
         $rows = $events->fetchAll();
@@ -423,5 +526,6 @@ if ($path === '/api/events' && $method === 'GET') {
 if (str_starts_with($path, '/api/')) {
     jsonResponse(['error' => 'Ruta no encontrada'], 404);
 }
+
 http_response_code(404);
 echo 'No encontrado';
