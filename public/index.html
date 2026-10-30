@@ -404,25 +404,48 @@
       $('sound-toggle').textContent = state.soundEnabled ? 'Silenciar sonido' : 'Activar sonido';
       $('sound-toggle').setAttribute('aria-pressed', String(state.soundEnabled));
     }
+    // Melodía retro definida como constante
+    const RETRO_MELODY = [
+      { freq: 880,     start: 0,    duration: 0.08 }, // A5
+      { freq: 1174.66, start: 0.08, duration: 0.08 }, // D6
+      { freq: 1396.91, start: 0.16, duration: 0.08 }, // F6
+      { freq: 1760,    start: 0.24, duration: 0.2  }  // A6
+    ];
 
-    async function playTaskSound() {
-      if (!state.soundEnabled || !state.audioContext) return;
-      try {
-        await state.audioContext.resume();
-        const now = state.audioContext.currentTime;
+    // Función helper para reproducir secuencias de notas
+    async function playMelody(state, notes) {
+      await state.audioContext.resume();
+      const now = state.audioContext.currentTime;
+
+      notes.forEach(({ freq, start, duration }) => {
+        const noteStart = now + start;
+        const noteEnd = noteStart + duration;
+
         const oscillator = state.audioContext.createOscillator();
         const volume = state.audioContext.createGain();
+
         oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(880, now);
-        oscillator.frequency.setValueAtTime(1174, now + 0.12);
-        volume.gain.setValueAtTime(0.0001, now);
-        volume.gain.exponentialRampToValueAtTime(0.18, now + 0.02);
-        volume.gain.setValueAtTime(0.18, now + 0.2);
-        volume.gain.exponentialRampToValueAtTime(0.0001, now + 0.34);
+        oscillator.frequency.setValueAtTime(freq, noteStart);
+
+        // Envolvente de volumen (Attack / Decay) para evitar clics
+        volume.gain.setValueAtTime(0.0001, noteStart);
+        volume.gain.exponentialRampToValueAtTime(0.15, noteStart + 0.02);
+        volume.gain.exponentialRampToValueAtTime(0.0001, noteEnd);
+
         oscillator.connect(volume);
         volume.connect(state.audioContext.destination);
-        oscillator.start(now);
-        oscillator.stop(now + 0.35);
+
+        oscillator.start(noteStart);
+        oscillator.stop(noteEnd + 0.01);
+      });
+    }
+
+    // Función principal de producción
+    async function playTaskSound() {
+      if (!state.soundEnabled || !state.audioContext) return;
+
+      try {
+        await playMelody(state, RETRO_MELODY);
         $('sound-status').textContent = 'Aviso sonoro de nueva tarea.';
       } catch {
         state.soundEnabled = false;
