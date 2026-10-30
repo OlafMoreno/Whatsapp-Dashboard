@@ -441,7 +441,7 @@
     }
 
     const TONO_MODE = false; // Cambiar según tu configuración
-    
+
     async function playTaskSound() {
       if (!state.soundEnabled) return;
 
@@ -449,7 +449,7 @@
         if (TONO_MODE) {
           // Reproduce el archivo MP3 limitado a 3 segundos
           const audio = new Audio('/assets/tono.mp3');
-          audio.volume = 0.5;
+          audio.volume = 0.10;
 
           audio.onplaying = () => {
             setTimeout(() => {

@@ -123,17 +123,30 @@ try {
         null,
         'UTF-8'
     );
-    $minutes = (int) (getenv('EMAIL_LOOKBACK_HOURS') ?: 1)*60*60;
-    $limitTimestamp = time() - ($minutes);
+   $tz = new DateTimeZone('Europe/Madrid');
+
+    // 1. Horas configuradas convertidas a segundos reales
+    $lookbackHours = (int) (getenv('EMAIL_LOOKBACK_HOURS') ?: 1);
+    $lookbackSeconds = $lookbackHours * 3600;
+
+    $limitTimestamp = time() - $lookbackSeconds;
+
+    // Fecha en formato IMAP (d-M-Y) para el comando SINCE
     $sinceDate = date('d-M-Y', $limitTimestamp);
-    logMsg("Buscando correos en IMAP desde hace {$minutes} minutos ('{$sinceDate}')...");
 
+    logMsg("Buscando correos en IMAP desde hace {$lookbackHours} hora(s) (desde '{$sinceDate}')...");
+
+    // 2. Consulta IMAP filtrando por fecha
     $mailIds = $mailbox->searchMailbox('SINCE "' . $sinceDate . '"');
-    $totalFound = count($mailIds);
-    logMsg("Candidatos encontrados en Gmail: {$totalFound}");
 
+    // 3. OPTIMIZACIÓN CLAVE: Invertir el array para procesar los más recientes primero (Order DESC)
+    // De esta forma, en cuanto encuentres un correo más antiguo que $limitTimestamp, puedes detener la ejecución (break).
+    $mailIds = array_reverse($mailIds);
+
+    $totalFound = count($mailIds);
+    logMsg("Candidatos devueltos por IMAP hoy: {$totalFound}");
+    
     $insertedCount = 0;
-    $skippedOldCount = 0;
     $skippedExcludedSenderCount = 0;
     $skippedAliasCount = 0;
     $skippedDuplicateCount = 0;
@@ -142,15 +155,22 @@ try {
         logMsg("--> Analizando correo #{$mailId} (" . ($index + 1) . "/{$totalFound})...");
         
         $mail = $mailbox->getMail($mailId, false);
-        $mailTimestamp = $mail->date ? strtotime($mail->date) : time();
 
-        // 1. Filtro de tiempo
-        logMsg("    Fecha del correo: " . date('Y-m-d H:i:s', $mailTimestamp));
-        logMsg("    Fecha límite: " . date('Y-m-d H:i:s', $limitTimestamp));
+        if (!empty($mail->date)) {
+            $dateObj = new DateTime($mail->date);
+            $dateObj->setTimezone($tz);
+            $mailTimestamp = $dateObj->getTimestamp();
+            $receivedAtStr = $dateObj->format('Y-m-d H:i:s');
+        } else {
+            $mailTimestamp = time();
+            $receivedAtStr = date('Y-m-d H:i:s');
+        }
+
+        // Al estar ordenados de más reciente a más antiguo:
+        // Si este correo ya es más viejo que la fecha límite, LOS SIGUIENTES TAMBIÉN LO SERÁN.
         if ($mailTimestamp < $limitTimestamp) {
-            logMsg("    ⏭️ Ignorado: Fuera del rango de hora.");
-            $skippedOldCount++;
-            continue;
+            logMsg(" ⏭️ Se alcanzó el límite de tiempo ({$lookbackHours}h). Deteniendo búsqueda.");
+            break; // Cancela el bucle y ahorra tiempo/memoria
         }
 
         $senderEmail = strtolower(trim($mail->fromAddress));
@@ -253,7 +273,6 @@ try {
     logMsg("Omitidos por Remitente Excluido: {$skippedExcludedSenderCount}");
     logMsg("Omitidos por Alias no coincidente: {$skippedAliasCount}");
     logMsg("Omitidos por Duplicado: {$skippedDuplicateCount}");
-    logMsg("Omitidos por antigüedad (> 1h): {$skippedOldCount}");
     logMsg("===========================" . PHP_EOL);
 
 } catch (\Throwable $e) {
