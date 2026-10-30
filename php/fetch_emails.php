@@ -204,24 +204,30 @@ try {
         logMsg("    De: {$fromName} <{$senderEmail}>");
         logMsg("    Asunto: {$subject}");
 
-        $stmt = $pdo->prepare("
-            INSERT IGNORE INTO tasks (
-                source, email_message_id, sender_email, from_name, 
-                subject, type, body, received_at
-            ) VALUES (
-                'email', :email_id, :sender_email, :from_name, 
-                :subject, 'email',:body, :received_at
-            )
-        ");
+        $checkStmt = $pdo->prepare("SELECT id FROM tasks WHERE email_message_id = :email_id LIMIT 1");
+        $checkStmt->execute([':email_id' => $messageId]);
 
-        $stmt->execute([
-            ':email_id'     => $messageId,
-            ':sender_email' => $senderEmail,
-            ':from_name'    => $fromName,
-            ':subject'      => $subject,
-            ':body'         => trim($subject),
-            ':received_at'  => $receivedAtStr
-        ]);
+        if (!$checkStmt->fetch()) {
+            // 2. Insertar solo si no existe
+            $stmt = $pdo->prepare("
+                INSERT INTO tasks (
+                    source, email_message_id, sender_email, from_name, 
+                    subject, type, body, received_at
+                ) VALUES (
+                    'email', :email_id, :sender_email, :from_name, 
+                    :subject, 'email', :body, :received_at
+                )
+            ");
+
+            $stmt->execute([
+                ':email_id'     => $messageId,
+                ':sender_email' => $senderEmail,
+                ':from_name'    => $fromName,
+                ':subject'      => $subject,
+                ':body'         => trim($subject),
+                ':received_at'  => $receivedAtStr
+            ]);
+        }
 
         if ($stmt->rowCount() > 0) {
             $taskId = (int) $pdo->lastInsertId();
