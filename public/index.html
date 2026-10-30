@@ -4,13 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f4f7f5">
-  <title>Mis tareas · WhatsApp</title>
+  <title>Mis tareas</title>
   <link rel="stylesheet" href="/assets/bootstrap.min.css">
   <style>
     :root {
-      --app-green: #15734c;
-      --app-green-dark: #10583b;
-      --app-muted: #68776e;
+      --app-green: #4929d8;
+      --app-green-dark: #10006b;
+      --app-muted: #8984a5;
       --app-line: #e3eae5;
     }
 
@@ -45,6 +45,16 @@
       color: var(--app-muted);
     }
 
+    .btn-success {
+      background: var(--app-green);
+      border-color: var(--app-green);
+    }
+
+    .btn-success:hover {
+      background: var(--app-green-dark);
+      border-color: var(--app-green-dark);
+    }
+
     .connection-dot {
       width: 8px;
       height: 8px;
@@ -53,8 +63,8 @@
     }
 
     .connection.on .connection-dot {
-      background: #198754;
-      box-shadow: 0 0 0 3px rgb(25 135 84 / 14%);
+      background: #2d1987;
+      box-shadow: 0 0 0 3px rgba(45, 25, 135, 0.14);
     }
 
     .stat-card {
@@ -80,7 +90,7 @@
     .filter:not(.active) {
       border-color: var(--app-line);
       background: #fff;
-      color: #45554b;
+      color: #454755;
     }
 
     .filter:not(.active):hover {
@@ -125,7 +135,7 @@
     }
 
     @keyframes task-highlight {
-      0%, 35% { background: #e6f4eb; }
+      0%, 35% { background: #e6e6f4; }
       100% { background: transparent; }
     }
 
@@ -482,7 +492,7 @@
         title.textContent = state.query ? 'No encontramos coincidencias' : state.status === 'done' ? 'Aún no hay tareas hechas' : 'Todo al día';
         const copy = document.createElement('p');
         copy.className = 'text-muted-app small mb-0';
-        copy.textContent = state.query ? 'Prueba con otra búsqueda.' : state.status === 'done' ? 'Cuando completes una tarea, aparecerá aquí.' : 'Las nuevas tareas de WhatsApp aparecerán aquí.';
+        copy.textContent = state.query ? 'Prueba con otra búsqueda.' : state.status === 'done' ? 'Cuando completes una tarea, aparecerá aquí.' : 'Las nuevas tareas aparecerán aquí.';
         empty.append(icon, title, copy);
         list.append(empty);
         return;
