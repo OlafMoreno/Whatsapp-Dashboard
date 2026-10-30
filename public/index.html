@@ -230,7 +230,7 @@
     }
 
     body.tv .task-body {
-      font-size: clamp(1.15rem, 1.8vw, 1.65rem);
+      /*font-size: clamp(1.15rem, 1.8vw, 1.65rem);*/
     }
 
     @media (max-width: 575.98px) {
@@ -440,16 +440,34 @@
       });
     }
 
-    // Función principal de producción
+    const TONO_MODE = false; // Cambiar según tu configuración
+    
     async function playTaskSound() {
-      if (!state.soundEnabled || !state.audioContext) return;
+      if (!state.soundEnabled) return;
 
       try {
-        await playMelody(state, RETRO_MELODY);
+        if (TONO_MODE) {
+          // Reproduce el archivo MP3 limitado a 3 segundos
+          const audio = new Audio('/assets/tono.mp3');
+          audio.volume = 0.5;
+
+          audio.onplaying = () => {
+            setTimeout(() => {
+              audio.pause();
+              audio.currentTime = 0;
+            }, 3000);
+          };
+
+          await audio.play();
+        } else {
+          // Reproduce la melodía generada por código
+          await playMelody(state, RETRO_MELODY);
+        }
+
         $('sound-status').textContent = 'Aviso sonoro de nueva tarea.';
-      } catch {
+      } catch (error) {
         state.soundEnabled = false;
-        updateSoundControl();
+        if (typeof updateSoundControl === 'function') updateSoundControl();
         $('sound-status').textContent = 'No se pudo reproducir el sonido. Vuelve a activar el audio.';
       }
     }
