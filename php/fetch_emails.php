@@ -117,7 +117,7 @@ try {
     ]);
 
     $mailbox = new Mailbox(
-        '{imap.gmail.com:993/imap/ssl/novalidate-cert}INBOX',
+        '{imap.gmail.com:993/imap/ssl/novalidate-cert}[Gmail]/Todos',
         $gmailUser,
         $gmailPass,
         null,
