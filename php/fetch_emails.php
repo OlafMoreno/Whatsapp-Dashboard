@@ -123,7 +123,7 @@ try {
         null,
         'UTF-8'
     );
-    $minutes = (int) (getenv('EMAIL_LOOKBACK_MINUTES') ?: 1)*60;
+    $minutes = (int) (getenv('EMAIL_LOOKBACK_HOURS') ?: 1)*60*60;
     $limitTimestamp = time() - ($minutes);
     $sinceDate = date('d-M-Y', $limitTimestamp);
     logMsg("Buscando correos en IMAP desde hace {$minutes} minutos ('{$sinceDate}')...");
