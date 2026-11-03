@@ -261,10 +261,10 @@ try {
                 publishEvent($pdo, 'task:new', $task);
                 logMsg("    📢 Evento 'task:new' enviado al Dashboard.");
                 $insertedCount++;
-            } else {
-                logMsg("    🔁 Ignorado: Correo duplicado en la BD.");
-                $skippedDuplicateCount++;
             }
+        } else {
+            logMsg("    🔁 Ignorado: Correo duplicado en la BD.");
+            $skippedDuplicateCount++;
         }
     }
 

@@ -100,6 +100,20 @@
       list-style: none;
     }
 
+    .channel-task-columns {
+      display: none;
+    }
+
+    @media (min-width: 992px) {
+      .channel-task-columns {
+        display: flex;
+      }
+
+      .task-list-mobile {
+        display: none;
+      }
+    }
+
     .task + .task {
       border-top: 1px solid var(--app-line);
     }
@@ -337,7 +351,19 @@
         </div>
         <div class="alert alert-danger py-2 mb-3 d-none" id="alert" role="alert"></div>
       </div>
-      <ul class="task-list tv-task-list" id="task-list" aria-live="polite"></ul>
+      <ul class="task-list task-list-mobile tv-task-list" id="task-list" aria-live="polite"></ul>
+      <div class="row g-3 p-3 p-lg-4 pt-0 channel-task-columns">
+        <section class="col-12 col-lg-6" aria-labelledby="email-list-title">
+          <div class="card h-100">
+            <ul class="task-list tv-task-list" id="email-task-list" aria-live="polite"></ul>
+          </div>
+        </section>
+        <section class="col-12 col-lg-6" aria-labelledby="whatsapp-list-title">
+          <div class="card h-100">
+            <ul class="task-list tv-task-list" id="whatsapp-task-list" aria-live="polite"></ul>
+          </div>
+        </section>
+      </div>
     </section>
 
     <p class="tv-hide small text-center text-muted-app mt-3 mb-0">Los cambios se sincronizan automáticamente para todo el equipo.</p>
@@ -355,6 +381,7 @@
           <strong class="task-sender"></strong>
           <span class="task-id"></span>
           <time class="task-time"></time>
+          <span class="task-type"></span>
         </div>
         <p class="task-body mb-0 mt-2"></p>
         <p class="task-note small text-success mb-0 mt-2"></p>
@@ -516,6 +543,90 @@
       });
     }
 
+    function createEmptyState(titleText, copyText) {
+      const empty = document.createElement('li');
+      empty.className = 'text-center py-5';
+      const icon = document.createElement('span');
+      icon.className = 'empty-icon';
+      icon.setAttribute('aria-hidden', 'true');
+      icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4.5 4.5L19 7"/><circle cx="12" cy="12" r="10"/></svg>';
+      const title = document.createElement('p');
+      title.className = 'fw-semibold mb-1';
+      title.textContent = titleText;
+      const copy = document.createElement('p');
+      copy.className = 'text-muted-app small mb-0';
+      copy.textContent = copyText;
+      empty.append(icon, title, copy);
+      return empty;
+    }
+
+    function createTaskElement(task, highlightId) {
+      const item = $('task-template').content.firstElementChild.cloneNode(true);
+      item.classList.toggle('is-done', Boolean(task.done));
+      item.classList.toggle('is-new', task.id === highlightId);
+
+      const toggle = item.querySelector('.task-check');
+      toggle.hidden = tvMode;
+      toggle.setAttribute('aria-pressed', String(Boolean(task.done)));
+      toggle.setAttribute('aria-label', task.done ? 'Volver a pendiente' : 'Marcar como hecha');
+      toggle.title = task.done ? 'Volver a pendiente' : 'Marcar como hecha';
+      toggle.addEventListener('click', () => updateTask(task, !Boolean(task.done)));
+
+      const sender = item.querySelector('.task-sender');
+      sender.textContent = task.from_name || (task.from_number ? `+${task.from_number}` : task.sender_email || 'Desconocido');
+      sender.title = task.from_number ? `+${task.from_number}` : task.sender_email || '';
+      item.querySelector('.task-id').textContent = `#${task.id}`;
+
+      const rawTimestamp = task.received_at;
+      const timezoneOffsetMs = new Date(rawTimestamp).getTimezoneOffset() * 60 * 1000;
+      const dateObj = new Date(rawTimestamp + timezoneOffsetMs);
+
+      const timeFormat = new Intl.DateTimeFormat(navigator.language, {
+        dateStyle: 'short',
+        timeStyle: 'medium',
+        timeZone: 'UTC'
+      });
+
+      const received = item.querySelector('.task-time');
+      received.textContent = ago(dateObj);
+      received.dateTime = dateObj.toISOString();
+      received.title = timeFormat.format(dateObj);
+
+      const type = item.querySelector('.task-type');
+      type.textContent = task.type ? `· ${task.type}` : '';
+      if (task.type === 'email') {
+        type.title = 'Email';
+        type.textContent = 'Email';
+        type.classList.add('rounded-pill', 'text-bg-info', 'px-1', 'py-0.5');
+      } else if (task.type === 'whatsapp') {
+        type.title = 'WhatsApp';
+        type.textContent = 'WhatsApp';
+        type.classList.add('rounded-pill', 'text-bg-success', 'px-1', 'py-0.5');
+      }
+
+      safeLinks(item.querySelector('.task-body'), task.body);
+
+      const badge = item.querySelector('.badge');
+      badge.textContent = task.done ? 'Hecha' : 'Pendiente';
+      badge.classList.toggle('text-bg-success', Boolean(task.done));
+      badge.classList.toggle('text-bg-warning', !task.done);
+
+      const note = item.querySelector('.task-note');
+      const remove = item.querySelector('.delete');
+      remove.hidden = !task.done || tvMode;
+      remove.addEventListener('click', () => deleteTask(task));
+
+      if (task.done) {
+        note.textContent = `Completada ${ago(task.done_at)}${task.done_by ? ` por ${task.done_by}` : ''}`;
+      } else if (Date.now() - task.received_at > 86400000) {
+        badge.textContent = 'Pendiente · +1 día';
+        badge.classList.replace('text-bg-warning', 'text-bg-secondary');
+      }
+
+      item.dataset.id = task.id;
+      return item;
+    }
+
     function render() {
       $('pending-count').textContent = state.counts.pending ?? 0;
       $('today-count').textContent = state.counts.today ?? 0;
@@ -529,80 +640,38 @@
       const highlightId = state.highlightId;
       state.highlightId = null;
       $('result-count').textContent = `${items.length} ${items.length === 1 ? 'tarea' : 'tareas'}`;
-      const list = $('task-list');
-      list.replaceChildren();
+      const mobileList = $('task-list');
+      const emailList = $('email-task-list');
+      const whatsappList = $('whatsapp-task-list');
+      mobileList.replaceChildren();
+      emailList.replaceChildren();
+      whatsappList.replaceChildren();
 
       if (items.length === 0) {
-        const empty = document.createElement('li');
-        empty.className = 'text-center py-5';
-        const icon = document.createElement('span');
-        icon.className = 'empty-icon';
-        icon.setAttribute('aria-hidden', 'true');
-        icon.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4.5 4.5L19 7"/><circle cx="12" cy="12" r="10"/></svg>';
-        const title = document.createElement('p');
-        title.className = 'fw-semibold mb-1';
-        title.textContent = state.query ? 'No encontramos coincidencias' : state.status === 'done' ? 'Aún no hay tareas hechas' : 'Todo al día';
-        const copy = document.createElement('p');
-        copy.className = 'text-muted-app small mb-0';
-        copy.textContent = state.query ? 'Prueba con otra búsqueda.' : state.status === 'done' ? 'Cuando completes una tarea, aparecerá aquí.' : 'Las nuevas tareas aparecerán aquí.';
-        empty.append(icon, title, copy);
-        list.append(empty);
-        return;
+        const title = state.query ? 'No encontramos coincidencias' : state.status === 'done' ? 'Aún no hay tareas hechas' : 'Todo al día';
+        const copy = state.query ? 'Prueba con otra búsqueda.' : state.status === 'done' ? 'Cuando completes una tarea, aparecerá aquí.' : 'Las nuevas tareas aparecerán aquí.';
+        mobileList.append(createEmptyState(title, copy));
+      } else {
+        for (const task of items) {
+          mobileList.append(createTaskElement(task, highlightId));
+        }
       }
 
-      for (const task of items) {
-        const item = $('task-template').content.firstElementChild.cloneNode(true);
-        item.classList.toggle('is-done', Boolean(task.done));
-        item.classList.toggle('is-new', task.id === highlightId);
-
-        const toggle = item.querySelector('.task-check');
-        toggle.hidden = tvMode;
-        toggle.setAttribute('aria-pressed', String(Boolean(task.done)));
-        toggle.setAttribute('aria-label', task.done ? 'Volver a pendiente' : 'Marcar como hecha');
-        toggle.title = task.done ? 'Volver a pendiente' : 'Marcar como hecha';
-        toggle.addEventListener('click', () => updateTask(task, !Boolean(task.done)));
-
-        const sender = item.querySelector('.task-sender');
-        sender.textContent = task.from_name || (task.from_number ? `+${task.from_number}` : task.sender_email || 'Desconocido');
-        sender.title = task.from_number ? `+${task.from_number}` : task.sender_email || '';
-        item.querySelector('.task-id').textContent = `#${task.id}`;
-
-        const rawTimestamp = task.received_at;
-        const timezoneOffsetMs = new Date(rawTimestamp).getTimezoneOffset() * 60 * 1000;
-        const dateObj = new Date(rawTimestamp + timezoneOffsetMs);
-
-        const timeFormat = new Intl.DateTimeFormat(navigator.language, {
-          dateStyle: 'short',
-          timeStyle: 'medium',
-          timeZone: 'UTC'
-        });
-
-        const received = item.querySelector('.task-time');
-        received.textContent = ago(dateObj);
-        received.dateTime = dateObj.toISOString(); 
-        received.title = timeFormat.format(dateObj);
-
-        safeLinks(item.querySelector('.task-body'), task.body);
-
-        const badge = item.querySelector('.badge');
-        badge.textContent = task.done ? 'Hecha' : 'Pendiente';
-        badge.classList.toggle('text-bg-success', Boolean(task.done));
-        badge.classList.toggle('text-bg-warning', !task.done);
-
-        const note = item.querySelector('.task-note');
-        const remove = item.querySelector('.delete');
-        remove.hidden = !task.done || tvMode;
-        remove.addEventListener('click', () => deleteTask(task));
-
-        if (task.done) {
-          note.textContent = `Completada ${ago(task.done_at)}${task.done_by ? ` por ${task.done_by}` : ''}`;
-        } else if (Date.now() - task.received_at > 86400000) {
-          badge.textContent = 'Pendiente · +1 día';
-          badge.classList.replace('text-bg-warning', 'text-bg-secondary');
+      const emailTasks = items.filter((task) => task.type === 'email');
+      const whatsappTasks = items.filter((task) => task.type === 'whatsapp');
+      if (emailTasks.length === 0) {
+        emailList.append(createEmptyState('No hay emails', 'Los emails aparecerán aquí.'));
+      } else {
+        for (const task of emailTasks) {
+          emailList.append(createTaskElement(task, highlightId));
         }
-
-        item.dataset.id = task.id;
-        list.append(item);
+      }
+      if (whatsappTasks.length === 0) {
+        whatsappList.append(createEmptyState('No hay tareas de WhatsApp', 'Los mensajes de WhatsApp aparecerán aquí.'));
+      } else {
+        for (const task of whatsappTasks) {
+          whatsappList.append(createTaskElement(task, highlightId));
+        }
       }
     }
 
