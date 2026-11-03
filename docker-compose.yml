@@ -56,8 +56,10 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Configura MYSQL_PASSWORD en .env}
       GMAIL_USER: ${GMAIL_USER:?Configura GMAIL_USER en .env}
       GMAIL_PASS: ${GMAIL_PASS:?Configura GMAIL_PASS en .env}
-      EXCLUDED_SENDERS: ${EXCLUDED_SENDERS:-}
+      EXCLUDED_SENDERS_EMAIL: ${EXCLUDED_SENDERS_EMAIL:-}
+      EXCLUDED_SENDERS_NAME: ${EXCLUDED_SENDERS_NAME:-}
       ALLOWED_RECIPIENTS: ${ALLOWED_RECIPIENTS:-}
+      EMAIL_LOOKBACK_HOURS: ${EMAIL_LOOKBACK_HOURS:-}
     volumes:
       - ./php:/var/www/html
       - /var/www/html/vendor  # <-- Preserva la carpeta vendor generada en el Dockerfile

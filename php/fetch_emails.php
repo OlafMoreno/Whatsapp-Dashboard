@@ -34,10 +34,12 @@ function parseEnvList(string $envKey): array {
     return array_values(array_filter($items, fn($item) => $item !== ''));
 }
 
-$excludedSenders   = parseEnvList('EXCLUDED_SENDERS');
+$excludedSendersEmails   = parseEnvList('EXCLUDED_SENDERS_EMAIL');
+$excludedSendersNames = parseEnvList('EXCLUDED_SENDERS_NAME');
 $allowedRecipients = parseEnvList('ALLOWED_RECIPIENTS');
 
-logMsg("Filtros cargados -> Excluidos: [" . implode(', ', $excludedSenders) . "]");
+logMsg("Filtros cargados -> Excluidos (Email): [" . implode(', ', $excludedSendersEmails) . "]");
+logMsg("Filtros cargados -> Excluidos (Nombre): [" . implode(', ', $excludedSendersNames) . "]");
 logMsg("Filtros cargados -> Alias permitidos: [" . implode(', ', $allowedRecipients) . "]");
 
 // =========================================================================
@@ -176,18 +178,28 @@ try {
         $senderEmail = strtolower(trim($mail->fromAddress));
         $fromName    = $mail->fromName ?: $senderEmail;
         $subject     = $mail->subject ?: 'Sin asunto';
+        logMsg("    Email: <{$senderEmail}>");
+        logMsg("    Nombre: {$fromName}");
+        logMsg("    Asunto: {$subject}");
 
         // 2. Filtro de Remitentes Excluidos
         $isExcludedSender = false;
-        foreach ($excludedSenders as $excluded) {
+        foreach ($excludedSendersEmails as $excluded) {
             if (str_contains($senderEmail, strtolower($excluded))) {
+                $isExcludedSender = true;
+                logMsg("    🚫 Ignorado por Remitente Email Excluido: <{$senderEmail}>");
+                break;
+            }
+        }
+        foreach ($excludedSendersNames as $excluded) {
+            if (str_contains(strtolower($fromName), strtolower($excluded))) {
+                logMsg("    🚫 Ignorado por Remitente Nombre Excluido: <{$fromName}>");
                 $isExcludedSender = true;
                 break;
             }
         }
 
         if ($isExcludedSender) {
-            logMsg("    🚫 Ignorado por Remitente Excluido: <{$senderEmail}>");
             $skippedExcludedSenderCount++;
             continue;
         }
