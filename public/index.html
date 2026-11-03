@@ -360,11 +360,12 @@
         </section>
         <section class="col-12 col-lg-6" aria-labelledby="whatsapp-list-title">
           <div class="card h-100">
-            <iframe 
-              src="http://localhost:8083"
-              class="w-100 h-100 border-0 rounded" 
-            >
-            </iframe>
+            <iframe
+              id="chromium-frame"
+              class="w-100 h-100 border-0 rounded"
+              title="Navegador de WhatsApp"
+              loading="lazy"
+            ></iframe>
             <!--<ul class="task-list tv-task-list" id="whatsapp-task-list" aria-live="polite"></ul>-->
           </div>
         </section>
@@ -413,6 +414,11 @@
     const tvMode = new URLSearchParams(location.search).get('tv') === '1';
     document.body.classList.toggle('tv', tvMode);
     let bannerTimer = 0;
+
+    const chromiumUrl = new URL(location.origin);
+    chromiumUrl.protocol = 'https:';
+    chromiumUrl.port = '8083';
+    $('chromium-frame').src = chromiumUrl.href;
 
     async function checkAuth() {
       try {
