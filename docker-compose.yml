@@ -96,6 +96,7 @@ services:
       PROXY_CERT_HOSTNAME: ${PROXY_CERT_HOSTNAME:-localhost}
     volumes:
       - proxy-certificates:/etc/nginx/ssl
+      - ./scripts/proxy-entrypoint.sh:/usr/local/bin/proxy-entrypoint.sh:ro
     ports:
       - "${HOST_BIND:-0.0.0.0}:${HOST_PORT:-8080}:8088"
       - "${HOST_BIND:-0.0.0.0}:${DASHBOARD_HTTPS_PORT:-8448}:8448"
