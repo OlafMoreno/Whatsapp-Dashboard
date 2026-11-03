@@ -417,7 +417,7 @@
 
     const chromiumUrl = new URL(location.origin);
     chromiumUrl.protocol = 'https:';
-    chromiumUrl.port = '8083';
+    chromiumUrl.port = '8084';
     $('chromium-frame').src = chromiumUrl.href;
 
     async function checkAuth() {

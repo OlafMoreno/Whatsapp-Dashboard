@@ -79,7 +79,8 @@ services:
     volumes:
       - ./whatsapp-config:/config # Guarda la sesión para no pedir QR al reiniciar
     ports:
-      - "8083:3001" # Interfaz HTTPS del navegador
+      - "8083:3000" # Interfaz HTTP del navegador
+      - "8084:3001" # Interfaz HTTPS del navegador
     restart: unless-stopped
   phpmyadmin:
     image: phpmyadmin:5.2.3-apache
