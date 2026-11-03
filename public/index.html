@@ -360,7 +360,12 @@
         </section>
         <section class="col-12 col-lg-6" aria-labelledby="whatsapp-list-title">
           <div class="card h-100">
-            <ul class="task-list tv-task-list" id="whatsapp-task-list" aria-live="polite"></ul>
+            <iframe 
+              src="http://localhost:8083"
+              class="w-100 h-100 border-0 rounded" 
+            >
+            </iframe>
+            <!--<ul class="task-list tv-task-list" id="whatsapp-task-list" aria-live="polite"></ul>-->
           </div>
         </section>
       </div>
@@ -370,7 +375,7 @@
   </main>
 
   <div class="alert alert-success new-task-banner position-fixed shadow d-none" id="new-task-banner" role="status" aria-live="polite"></div>
-
+  
   <template id="task-template">
     <li class="task d-flex align-items-start gap-3 py-3">
       <button class="task-check btn btn-outline-success rounded-circle" type="button">
@@ -642,10 +647,10 @@
       $('result-count').textContent = `${items.length} ${items.length === 1 ? 'tarea' : 'tareas'}`;
       const mobileList = $('task-list');
       const emailList = $('email-task-list');
-      const whatsappList = $('whatsapp-task-list');
+      //const whatsappList = $('whatsapp-task-list');
       mobileList.replaceChildren();
       emailList.replaceChildren();
-      whatsappList.replaceChildren();
+      //whatsappList.replaceChildren();
 
       if (items.length === 0) {
         const title = state.query ? 'No encontramos coincidencias' : state.status === 'done' ? 'Aún no hay tareas hechas' : 'Todo al día';
@@ -667,10 +672,10 @@
         }
       }
       if (whatsappTasks.length === 0) {
-        whatsappList.append(createEmptyState('No hay tareas de WhatsApp', 'Los mensajes de WhatsApp aparecerán aquí.'));
+        //whatsappList.append(createEmptyState('No hay tareas de WhatsApp', 'Los mensajes de WhatsApp aparecerán aquí.'));
       } else {
         for (const task of whatsappTasks) {
-          whatsappList.append(createTaskElement(task, highlightId));
+          //whatsappList.append(createTaskElement(task, highlightId));
         }
       }
     }

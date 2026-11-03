@@ -68,7 +68,19 @@ services:
     depends_on:
       db:
         condition: service_healthy
-
+  whatsapp-chrome:
+    image: lscr.io/linuxserver/chromium:latest
+    container_name: whatsapp_chrome
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Madrid
+      - CUSTOM_CLI=https://web.whatsapp.com/ # Abre WhatsApp al iniciar
+    volumes:
+      - ./whatsapp-config:/config # Guarda la sesión para no pedir QR al reiniciar
+    ports:
+      - "8083:3000" # Puerto de la interfaz web del navegador
+    restart: unless-stopped
   phpmyadmin:
     image: phpmyadmin:5.2.3-apache
     restart: unless-stopped
