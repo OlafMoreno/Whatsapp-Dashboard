@@ -15,8 +15,6 @@ services:
       - ./php:/var/www/html
       - /var/www/html/vendor  # <-- Preserva la carpeta vendor generada en el Dockerfile
       - ./public:/opt/whatsapp-tareas/public:ro
-    ports:
-      - "${HOST_BIND:-0.0.0.0}:${HOST_PORT:-8080}:80"
     depends_on:
       db:
         condition: service_healthy
@@ -37,8 +35,6 @@ services:
     volumes:
       - ./php:/var/www/html
       - /var/www/html/vendor  # <-- Preserva la carpeta vendor generada en el Dockerfile
-    ports:
-      - "${WEBHOOK_HOST_BIND:-127.0.0.1}:${WEBHOOK_HOST_PORT:-8081}:80"
     depends_on:
       db:
         condition: service_healthy
@@ -78,9 +74,6 @@ services:
       - CUSTOM_CLI=https://web.whatsapp.com/ # Abre WhatsApp al iniciar
     volumes:
       - ./whatsapp-config:/config # Guarda la sesión para no pedir QR al reiniciar
-    ports:
-      - "8083:3000" # Interfaz HTTP del navegador
-      - "8084:3001" # Interfaz HTTPS del navegador
     restart: unless-stopped
   phpmyadmin:
     image: phpmyadmin:5.2.3-apache
@@ -88,11 +81,35 @@ services:
     environment:
       PMA_HOST: db
       PMA_PORT: 3306
-    ports:
-      - "${MYSQLADMIN_HOST_BIND:-127.0.0.1}:${MYSQLADMIN_HOST_PORT:-8082}:80"
     depends_on:
       db:
         condition: service_healthy
+
+  proxy:
+    build:
+      context: .
+      dockerfile: docker/proxy.Dockerfile
+    image: whatsapp-dashboard-proxy:latest
+    restart: unless-stopped
+    environment:
+      PROXY_CERT_IP: ${PROXY_CERT_IP:-192.168.9.141}
+      PROXY_CERT_HOSTNAME: ${PROXY_CERT_HOSTNAME:-localhost}
+    volumes:
+      - proxy-certificates:/etc/nginx/ssl
+    ports:
+      - "${HOST_BIND:-0.0.0.0}:${HOST_PORT:-8080}:8088"
+      - "${HOST_BIND:-0.0.0.0}:${DASHBOARD_HTTPS_PORT:-8448}:8448"
+      - "${WEBHOOK_HOST_BIND:-127.0.0.1}:${WEBHOOK_HOST_PORT:-8081}:8081"
+      - "${WEBHOOK_HOST_BIND:-127.0.0.1}:${WEBHOOK_HTTPS_PORT:-8445}:8445"
+      - "${MYSQLADMIN_HTTP_BIND:-127.0.0.1}:${MYSQLADMIN_HOST_PORT:-8082}:8082"
+      - "${MYSQLADMIN_HOST_BIND:-0.0.0.0}:${MYSQLADMIN_HTTPS_PORT:-8446}:8446"
+      - "${HOST_BIND:-0.0.0.0}:8083:8083"
+      - "${HOST_BIND:-0.0.0.0}:8084:8084"
+    depends_on:
+      - web
+      - webhook
+      - whatsapp-chrome
+      - phpmyadmin
 
   db:
     image: mariadb:11.4
@@ -118,3 +135,4 @@ services:
 
 volumes:
   tareas-db:
+  proxy-certificates:

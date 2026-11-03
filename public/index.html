@@ -360,6 +360,9 @@
         </section>
         <section class="col-12 col-lg-6" aria-labelledby="whatsapp-list-title">
           <div class="card h-100">
+            <p class="small px-3 pt-2 mb-0">
+              <a id="chromium-link" target="_blank" rel="noopener noreferrer">Abrir Chromium para aceptar el certificado HTTPS (primer acceso)</a>
+            </p>
             <iframe
               id="chromium-frame"
               class="w-100 h-100 border-0 rounded"
@@ -418,6 +421,7 @@
     const chromiumUrl = new URL(location.origin);
     chromiumUrl.protocol = 'https:';
     chromiumUrl.port = '8084';
+    $('chromium-link').href = chromiumUrl.href;
     $('chromium-frame').src = chromiumUrl.href;
 
     async function checkAuth() {

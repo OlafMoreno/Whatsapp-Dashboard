@@ -1,6 +1,6 @@
 # Tareas de WhatsApp
 
-Aplicación para que los mensajes entrantes de WhatsApp Cloud API se guarden como tareas en MariaDB y aparezcan en el dashboard del equipo. La aplicación, Apache, PHP y la base de datos se ejecutan en contenedores Docker. Bootstrap se sirve localmente, sin depender de un CDN. No necesitas instalar PHP, Node.js, npm ni Caddy en Windows.
+Aplicación para que los mensajes entrantes de WhatsApp Cloud API se guarden como tareas en MariaDB y aparezcan en el dashboard del equipo. La aplicación, Apache, PHP, el proxy Nginx y la base de datos se ejecutan en contenedores Docker. Bootstrap se sirve localmente, sin depender de un CDN. No necesitas instalar PHP, Node.js, npm ni un proxy en Windows.
 
 ## Iniciar en Windows
 
@@ -25,19 +25,40 @@ Aplicación para que los mensajes entrantes de WhatsApp Cloud API se guarden com
 
 5. Abre `http://localhost:8080` (o el puerto que hayas puesto en `HOST_PORT`). El equipo puede marcar tareas como resueltas, devolverlas a pendientes o eliminarlas sin iniciar sesión.
 
-El puerto del dashboard se publica en la red local para que el televisor y el equipo vean las tareas automáticamente. Abre `http://IP-DEL-ORDENADOR:8080/?tv=1` (sustituye `8080` por `HOST_PORT`) en el televisor para mostrar las tareas pendientes en una vista grande; el modo TV no muestra controles para cambiar las tareas. Los mensajes nuevos aparecen resaltados y vuelven a poner la lista al principio. El puerto de MariaDB no se publica; solo lo usan los servicios dentro de Docker. **Cualquier usuario con acceso al dashboard puede marcar tareas, devolverlas a pendientes o eliminarlas.** Limita ese puerto a la red local mediante el firewall y no lo redirijas al Internet público: los mensajes y teléfonos se pueden ver sin contraseña en esa red.
+El proxy Nginx es el único servicio que publica puertos para las aplicaciones web. Conserva los puertos HTTP existentes y añade HTTPS:
 
-Chromium publica HTTP en `8083` y HTTPS en `8084`. El iframe usa HTTPS con el mismo host del dashboard. Para acceder desde otro equipo por IP, el certificado HTTPS debe incluir esa IP; como es autofirmado, abre `https://IP-DEL-ORDENADOR:8084` directamente, acepta la advertencia y luego recarga el dashboard. El puerto HTTP queda disponible para acceso directo, pero la interfaz de Chromium requiere un contexto seguro fuera de `localhost`.
+| Servicio | HTTP | HTTPS |
+|---|---:|---:|
+| Dashboard | `HOST_PORT` (8080 por defecto) | `DASHBOARD_HTTPS_PORT` (8448) |
+| Chromium | 8083 | 8084 |
+| Webhook | `WEBHOOK_HOST_PORT` (8081) | `WEBHOOK_HTTPS_PORT` (8445) |
+| phpMyAdmin | `MYSQLADMIN_HOST_PORT` (8082, solo localhost) | `MYSQLADMIN_HTTPS_PORT` (8446, red local) |
 
-El dashboard y el webhook son servicios separados: el primero escucha en `HOST_BIND:HOST_PORT` y el segundo en `WEBHOOK_HOST_BIND:WEBHOOK_HOST_PORT` (por defecto `127.0.0.1:8081`). El webhook acepta la verificación GET y las notificaciones POST de Meta en `/webhook`; no sirve el dashboard ni expone las demás rutas de la API. phpMyAdmin tiene otro puerto configurable (`MYSQLADMIN_HOST_BIND` y `MYSQLADMIN_HOST_PORT`), por defecto `127.0.0.1:8082`. Mantén phpMyAdmin accesible solo desde este ordenador; no publiques su puerto en la red local ni en Internet.
+El iframe de Chromium usa HTTPS. El proxy crea un certificado de autoridad local autofirmado para `PROXY_CERT_IP` y `PROXY_CERT_HOSTNAME` al iniciar. El navegador no puede confiar en ese certificado de forma automática o silenciosa. En el primer acceso, pulsa **Abrir Chromium para aceptar el certificado HTTPS**, revisa la advertencia y continúa solo si reconoces la IP y el certificado; luego vuelve al dashboard y recárgalo. Para que el cliente confíe permanentemente, exporta el certificado en el servidor:
 
-Abre `http://localhost:8082` para entrar en phpMyAdmin (si cambiaste `MYSQLADMIN_HOST_PORT`, usa ese puerto). Inicia sesión con `MYSQLADMIN_USER` y `MYSQLADMIN_PASSWORD`, configurados en `.env`; esa cuenta puede crear, modificar y borrar tablas y datos dentro de la base de tareas. No tiene permisos sobre otras bases ni puede administrar las cuentas del servidor. MariaDB crea la cuenta directamente durante su inicialización; no hay un contenedor auxiliar. Si cambias el usuario o la contraseña después de haber inicializado la base de datos, actualiza la cuenta dentro de MariaDB; los scripts de inicialización no se vuelven a ejecutar sobre un volumen existente. phpMyAdmin no expone el puerto de MariaDB ni guarda credenciales de inicio de sesión.
+```powershell
+docker compose cp proxy:/etc/nginx/ssl/cert.pem .\proxy-ca.crt
+docker compose exec -T proxy openssl x509 -in /etc/nginx/ssl/cert.pem -noout -fingerprint -sha256
+```
+
+Transfiere `proxy-ca.crt` al cliente por un medio confiable y compara allí su huella SHA-256 con la obtenida en el servidor. Solo si coincide, impórtalo en Windows desde PowerShell del cliente:
+
+```powershell
+Import-Certificate -FilePath "$HOME\Downloads\proxy-ca.crt" -CertStoreLocation Cert:\CurrentUser\Root
+```
+
+Cierra y vuelve a abrir el navegador. Configura `PROXY_CERT_IP` en `.env` con la IPv4 LAN que muestra `ipconfig` en el equipo servidor; si cambia esa IP, reinicia el proxy y vuelve a confiar el certificado nuevo en cada cliente. Limita los puertos de aplicación a la red local en el firewall y no los publiques directamente en Internet. El puerto HTTP de phpMyAdmin queda ligado a localhost; para acceso desde la red usa HTTPS.
+
+El puerto del dashboard se publica en la red local para que el televisor y el equipo vean las tareas automáticamente. Abre `http://IP-DEL-ORDENADOR:8080/?tv=1` (sustituye `8080` por `HOST_PORT`) en el televisor para mostrar las tareas pendientes en una vista grande; el modo TV no muestra controles para cambiar las tareas. Los mensajes nuevos aparecen resaltados y vuelven a poner la lista al principio. El puerto de MariaDB no se publica; solo lo usan los servicios dentro de Docker. **Cualquier usuario con acceso al dashboard puede marcar tareas, devolverlas a pendientes o eliminarlas.** Limita los puertos publicados a la red local mediante el firewall y no los redirijas al Internet público: los mensajes y teléfonos se pueden ver sin contraseña en esa red.
+
+Abre `http://localhost:8082` para entrar en phpMyAdmin desde el servidor o `https://IP-DEL-ORDENADOR:8446` desde la red local. El acceso HTTPS requiere confiar primero en el certificado autofirmado. Inicia sesión con `MYSQLADMIN_USER` y `MYSQLADMIN_PASSWORD`, configurados en `.env`; esa cuenta puede crear, modificar y borrar tablas y datos dentro de la base de tareas. No tiene permisos sobre otras bases ni puede administrar las cuentas del servidor. MariaDB crea la cuenta directamente durante su inicialización; no hay un contenedor auxiliar. Si cambias el usuario o la contraseña después de haber inicializado la base de datos, actualiza la cuenta dentro de MariaDB; los scripts de inicialización no se vuelven a ejecutar sobre un volumen existente. MariaDB no expone su puerto ni guarda credenciales de inicio de sesión.
 
 Comandos útiles:
 
 ```powershell
 docker compose logs -f web
 docker compose logs -f webhook
+docker compose logs -f proxy
 docker compose logs -f db
 docker compose up -d --build
 docker compose exec -T db sh -c 'mariadb-dump -u root -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE"' > .\copia.sql
@@ -53,9 +74,9 @@ Los cambios en `Dockerfile`, `docker-compose.yml` o dependencias requieren recre
 
 ## Recibir tareas desde WhatsApp
 
-El dashboard y el televisor pueden estar en la red interna, pero Meta necesita una URL HTTPS pública para verificar y enviar notificaciones. Este proyecto no instala ni configura Caddy, un túnel o un proxy. Configura el proxy/túnel HTTPS que ya uses para reenviar **GET y POST** de `https://TU-DOMINIO/webhook` a `http://127.0.0.1:8081/webhook`, conservando los parámetros de consulta del GET de verificación y el cuerpo y las cabeceras del POST. En Meta configura como URL de devolución de llamada `https://TU-DOMINIO/webhook`; no incluyas `/api` al final.
+El proxy local publica el webhook por HTTPS en `WEBHOOK_HTTPS_PORT` (8445 por defecto), pero su certificado autofirmado no sirve para Meta. Meta necesita un certificado confiable y una URL HTTPS pública. Configura el proxy/túnel HTTPS público que ya uses para reenviar **GET y POST** de `https://TU-DOMINIO/webhook` a `http://127.0.0.1:8081/webhook`, conservando los parámetros de consulta del GET de verificación y el cuerpo y las cabeceras del POST. En Meta configura como URL de devolución de llamada `https://TU-DOMINIO/webhook`; no incluyas `/api` al final.
 
-Mantén `WEBHOOK_HOST_BIND=127.0.0.1` si el proxy/túnel se ejecuta en Windows en este ordenador. No publiques el puerto 8081 directamente en Internet: el servicio de origen usa HTTP y la conexión pública debe terminar en HTTPS en el proxy. Si el proxy se ejecuta en otro contenedor, configura `WEBHOOK_HOST_BIND=0.0.0.0` para que pueda alcanzar el puerto publicado y limita `WEBHOOK_HOST_PORT` mediante el firewall solo a ese proxy; no expongas ese puerto al resto de la red. El endpoint permite únicamente `/webhook` y `/health`.
+Mantén `WEBHOOK_HOST_BIND=127.0.0.1` si el proxy/túnel público se ejecuta en Windows en este ordenador. No publiques los puertos del webhook directamente en Internet; la conexión pública debe terminar en HTTPS con un certificado válido. Si el proxy público se ejecuta en otro contenedor, configura `WEBHOOK_HOST_BIND=0.0.0.0` y limita el puerto HTTP mediante el firewall solo a ese proxy. El endpoint permite únicamente `/webhook` y `/health`.
 
 1. En Meta for Developers crea o abre una aplicación y añade el producto WhatsApp.
 2. Abre la configuración del webhook e introduce:
@@ -79,7 +100,7 @@ Si la aplicación de Meta está en modo desarrollo, solo recibirá mensajes de s
 - Actualizaciones en directo cuando otro miembro del equipo recibe, completa o elimina una tarea.
 - Vista pública de solo lectura para el televisor: mensajes y cambios aparecen sin iniciar sesión ni pedir intervención al administrador; la página se actualiza automáticamente si se interrumpe la conexión.
 - El equipo puede completar, reabrir y borrar tareas desde la vista normal sin iniciar sesión.
-- Servicio y puerto separados para el webhook de WhatsApp, con acceso limitado a la ruta `/webhook`.
+- Proxy Nginx único delante del dashboard, Chromium, phpMyAdmin y webhook, con endpoints HTTP y HTTPS.
 - Modo pantalla grande mediante `/?tv=1`, con nuevos mensajes destacados al llegar.
 - Marcar tareas como resueltas y registrar cuándo; el sistema muestra **Equipo** como responsable si no se inicia sesión.
 - Usa **Administrar tareas hechas** para consultar, reabrir o eliminar tareas completadas sin iniciar sesión.
@@ -92,7 +113,8 @@ Si la aplicación de Meta está en modo desarrollo, solo recibirá mensajes de s
 - [`.env.example`](./.env.example): plantilla. Cópiala como `.env` y cambia las contraseñas y los tokens.
 - `.env`: archivo local con secretos que crearás a partir de `.env.example`; Git lo ignora. No lo compartas.
 - [`sql/init.sql`](./sql/init.sql): tablas e índices de las tareas y del canal de eventos.
-- [`docker-compose.yml`](./docker-compose.yml): contenedores separados para el dashboard, el webhook y MariaDB.
+- [`docker-compose.yml`](./docker-compose.yml): contenedores para el dashboard, el webhook, Chromium, phpMyAdmin, el proxy y MariaDB.
+- [`docker/nginx-proxy.conf`](./docker/nginx-proxy.conf): rutas HTTP/HTTPS del proxy y soporte WebSocket para Chromium.
 - [`php/index.php`](./php/index.php): aplicación PHP, API y webhook.
 - [`public/assets/bootstrap.min.css`](./public/assets/bootstrap.min.css): Bootstrap 5.3.3 servido localmente para el dashboard.
 
