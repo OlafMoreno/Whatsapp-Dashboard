@@ -34,20 +34,28 @@ El proxy Nginx es el único servicio que publica puertos para las aplicaciones w
 | Webhook | `WEBHOOK_HOST_PORT` (8081) | `WEBHOOK_HTTPS_PORT` (8445) |
 | phpMyAdmin | `MYSQLADMIN_HOST_PORT` (8082, solo localhost) | `MYSQLADMIN_HTTPS_PORT` (8446, red local) |
 
-El iframe de Chromium usa HTTPS. El proxy crea un certificado de autoridad local autofirmado para `PROXY_CERT_IP` y `PROXY_CERT_HOSTNAME` al iniciar. El navegador no puede confiar en ese certificado de forma automática o silenciosa. En el primer acceso, pulsa **Abrir Chromium para aceptar el certificado HTTPS**, revisa la advertencia y continúa solo si reconoces la IP y el certificado; luego vuelve al dashboard y recárgalo. Para que el cliente confíe permanentemente, exporta el certificado en el servidor:
+El iframe de Chromium usa HTTPS. El proxy crea una autoridad certificadora (CA) local y un certificado de servidor para `PROXY_CERT_IP` y `PROXY_CERT_HOSTNAME`. El navegador no puede confiar en ellos de forma automática o silenciosa. Para que Chromium funcione como contexto seguro, cada cliente debe confiar en la CA. Descárgala desde `http://IP-DEL-ORDENADOR:HOST_PORT/proxy-ca.crt` (por defecto `http://192.168.9.141:8088/proxy-ca.crt`) o desde **Certificado del proxy** en el dashboard. También puedes abrir **Chromium para aceptar el certificado HTTPS**, revisar la advertencia y continuar solo si reconoces la IP y el certificado; luego vuelve al dashboard y recárgalo. Para confiar permanentemente en Windows, compara la huella SHA-256 de la CA antes de importarla:
 
 ```powershell
-docker compose cp proxy:/etc/nginx/ssl/cert.pem .\proxy-ca.crt
-docker compose exec -T proxy openssl x509 -in /etc/nginx/ssl/cert.pem -noout -fingerprint -sha256
+docker compose cp proxy:/etc/nginx/ssl/ca.pem .\proxy-ca.crt
+docker compose exec -T proxy openssl x509 -in /etc/nginx/ssl/ca.pem -noout -fingerprint -sha256
 ```
 
-Transfiere `proxy-ca.crt` al cliente por un medio confiable y compara allí su huella SHA-256 con la obtenida en el servidor. Solo si coincide, impórtalo en Windows desde PowerShell del cliente:
+Compara la huella del servidor con la calculada en el cliente mediante PowerShell:
+
+```powershell
+$cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2("$HOME\Downloads\proxy-ca.crt")
+$sha = [System.Security.Cryptography.SHA256]::Create()
+[BitConverter]::ToString($sha.ComputeHash($cert.RawData)).Replace('-', '')
+```
+
+La huella debe coincidir con la del servidor, ignorando los dos puntos. Solo entonces impórtalo:
 
 ```powershell
 Import-Certificate -FilePath "$HOME\Downloads\proxy-ca.crt" -CertStoreLocation Cert:\CurrentUser\Root
 ```
 
-Cierra y vuelve a abrir el navegador. Configura `PROXY_CERT_IP` en `.env` con la IPv4 LAN que muestra `ipconfig` en el equipo servidor; si cambia esa IP, reinicia el proxy y vuelve a confiar el certificado nuevo en cada cliente. Limita los puertos de aplicación a la red local en el firewall y no los publiques directamente en Internet. El puerto HTTP de phpMyAdmin queda ligado a localhost; para acceso desde la red usa HTTPS.
+Cierra y vuelve a abrir el navegador. Configura `PROXY_CERT_IP` en `.env` con la IPv4 LAN que muestra `ipconfig` en el equipo servidor; si cambia esa IP, reinicia el proxy para emitir un certificado de servidor nuevo. Limita los puertos de aplicación a la red local en el firewall y no los publiques directamente en Internet. El puerto HTTP de phpMyAdmin queda ligado a localhost; para acceso desde la red usa HTTPS.
 
 El puerto del dashboard se publica en la red local para que el televisor y el equipo vean las tareas automáticamente. Abre `http://IP-DEL-ORDENADOR:8080/?tv=1` (sustituye `8080` por `HOST_PORT`) en el televisor para mostrar las tareas pendientes en una vista grande; el modo TV no muestra controles para cambiar las tareas. Los mensajes nuevos aparecen resaltados y vuelven a poner la lista al principio. El puerto de MariaDB no se publica; solo lo usan los servicios dentro de Docker. **Cualquier usuario con acceso al dashboard puede marcar tareas, devolverlas a pendientes o eliminarlas.** Limita los puertos publicados a la red local mediante el firewall y no los redirijas al Internet público: los mensajes y teléfonos se pueden ver sin contraseña en esa red.
 
