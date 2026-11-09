@@ -112,6 +112,27 @@
       .task-list-mobile {
         display: none;
       }
+
+      body:not(.tv) .channel-task-columns {
+        height: calc(100vh - 320px);
+        min-height: 20rem;
+      }
+
+      body:not(.tv) .channel-task-columns .card {
+        min-height: 0;
+      }
+
+      body:not(.tv) .channel-task-columns .task-list {
+        min-height: 0;
+        max-height: calc(100vh - 20px);
+        overflow-y: auto;
+      }
+
+      body:not(.tv) .channel-task-columns iframe {
+        flex: 1 1 auto;
+        height: auto !important;
+        min-height: 0;
+      }
     }
 
     .task + .task {
@@ -239,6 +260,7 @@
     }
 
     body.tv .tv-task-list {
+      min-height: calc(100vh - 20px);
       max-height: calc(100vh - 20px);
       overflow-y: auto;
     }
@@ -254,6 +276,7 @@
       }
 
       body.tv .tv-task-list {
+        min-height: 0;
         max-height: none;
       }
     }
@@ -268,8 +291,8 @@
   </style>
 </head>
 <body>
-  <main class="container-fluid dashboard-shell px-3 px-lg-4 py-4 py-lg-5">
-    <header class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+  <main class="container-fluid dashboard-shell px-3 px-lg-4 py-4 py-lg-1">
+    <header class="d-flex flex-wrap justify-content-between align-items-center gap-3 py-lg-1">
       <div class="d-flex align-items-center gap-3">
         <span class="tv-hide brand-mark" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11.5a7.5 7.5 0 0 1-11.2 6.5L4 19l1.1-4.1A7.5 7.5 0 1 1 20 11.5Z"/><path d="m8.8 11.8 2 2 4.3-4.5"/></svg>
@@ -292,10 +315,6 @@
         <button class="btn btn-outline-danger btn-sm rounded-pill tv-hide" id="logout-btn" type="button">Salir</button>
       </div>
     </header>
-
-    <section class="tv-hide mt-5 mb-4">
-      <h1 class="display-6 fw-bold mb-2">Tareas</h1>
-    </section>
 
     <section class="row row-cols-1 row-cols-sm-3 g-2 mb-2 tv-summary" aria-label="Resumen de tareas">
       <div class="col">
@@ -325,7 +344,7 @@
     </section>
 
     <section class="card border-0 shadow-sm" aria-labelledby="list-title">
-      <div class="tv-hide card-body p-3 p-lg-4">
+      <div class="tv-hide card-body p-3">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
           <h2 class="h4 fw-bold mb-0" id="list-title">Bandeja de tareas</h2>
           <span class="small text-muted-app" id="result-count"></span>
@@ -352,7 +371,7 @@
         <div class="alert alert-danger py-2 mb-3 d-none" id="alert" role="alert"></div>
       </div>
       <ul class="task-list task-list-mobile tv-task-list" id="task-list" aria-live="polite"></ul>
-      <div class="row g-3 p-3 p-lg-4 pt-0 channel-task-columns">
+      <div class="row g-3 p-3 pt-0 channel-task-columns">
         <section class="col-12 col-lg-6" aria-labelledby="email-list-title">
           <div class="card h-100">
             <ul class="task-list tv-task-list" id="email-task-list" aria-live="polite"></ul>
@@ -374,8 +393,6 @@
         </section>
       </div>
     </section>
-
-    <p class="tv-hide small text-center text-muted-app mt-3 mb-0">Los cambios se sincronizan automáticamente para todo el equipo.</p>
   </main>
 
   <div class="alert alert-success new-task-banner position-fixed shadow d-none" id="new-task-banner" role="status" aria-live="polite"></div>
@@ -688,6 +705,7 @@
           //whatsappList.append(createTaskElement(task, highlightId));
         }
       }
+
     }
 
     function showError(message) {
