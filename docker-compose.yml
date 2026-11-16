@@ -72,7 +72,7 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=Europe/Madrid
-      - CUSTOM_CLI=https://web.whatsapp.com/ # Abre WhatsApp al iniciar
+      - CUSTOM_CLI=https://web.whatsapp.com/ --autoplay-policy=no-user-gesture-required # Abre WhatsApp al iniciar
     volumes:
       - ./whatsapp-config:/config # Guarda la sesión para no pedir QR al reiniciar
     restart: unless-stopped
