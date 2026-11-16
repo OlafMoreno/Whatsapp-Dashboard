@@ -67,6 +67,7 @@ services:
   whatsapp-chrome:
     image: lscr.io/linuxserver/chromium:latest
     container_name: whatsapp_chrome
+    shm_size: "1gb"
     environment:
       - PUID=1000
       - PGID=1000
